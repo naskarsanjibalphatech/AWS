@@ -37,21 +37,74 @@ const PLCDashboard = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [showChart, setShowChart] = useState(true);
+  const [triggerStatus, setTriggerStatus] = useState({ success: 0, failed: 0, lastTriggered: null });
   const itemsPerPage = 50;
 
   const API_BASE = 'https://lewgxoxna8.execute-api.ap-south-1.amazonaws.com/Read/';
+  const TRIGGER_API = 'https://yv2f6ynj93.execute-api.ap-south-1.amazonaws.com/default/AWSToUSR_Kiswok';
   
   // Refs for direct DOM manipulation to avoid React interference
   const fromDateRef = useRef(null);
   const toDateRef = useRef(null);
   const isUserInteracting = useRef(false);
   const autoRefreshRef = useRef(null);
+  const triggerRef = useRef(null); // For background trigger
 
   // Update clock every second
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
+
+  // Background Data Trigger Function - Runs every 3 seconds
+  const triggerDataFetch = useCallback(async () => {
+    try {
+      console.log('Triggering data fetch from PLC to database...');
+      
+      const response = await fetch(TRIGGER_API, {
+        method: 'GET', // or POST if needed
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        setTriggerStatus(prev => ({
+          ...prev,
+          success: prev.success + 1,
+          lastTriggered: new Date().toISOString()
+        }));
+        console.log('✅ Data trigger successful');
+      } else {
+        throw new Error(`Trigger failed: ${response.status}`);
+      }
+    } catch (err) {
+      console.error('❌ Data trigger failed:', err);
+      setTriggerStatus(prev => ({
+        ...prev,
+        failed: prev.failed + 1,
+        lastTriggered: new Date().toISOString()
+      }));
+    }
+  }, []);
+
+  // Setup Background Data Trigger (Every 3 seconds)
+  useEffect(() => {
+    console.log('🚀 Starting background data trigger (every 3 seconds)');
+    
+    // Initial trigger
+    triggerDataFetch();
+    
+    // Set up interval for every 3 seconds
+    triggerRef.current = setInterval(triggerDataFetch, 3000);
+    
+    return () => {
+      if (triggerRef.current) {
+        clearInterval(triggerRef.current);
+        console.log('🛑 Background data trigger stopped');
+      }
+    };
+  }, [triggerDataFetch]);
 
   const fetchEnergyData = useCallback(async () => {
     // Skip if user is actively using datetime inputs
@@ -195,11 +248,11 @@ const PLCDashboard = () => {
     }
   }, [reportConfig.tag]);
 
-  // Setup controlled auto-refresh
+  // Setup controlled auto-refresh for display data (every 5 seconds)
   useEffect(() => {
     const startAutoRefresh = () => {
       fetchEnergyData(); // Initial fetch
-      autoRefreshRef.current = setInterval(fetchEnergyData, 5000);
+      autoRefreshRef.current = setInterval(fetchEnergyData, 5000); // Every 5 seconds
     };
 
     startAutoRefresh();
@@ -368,11 +421,11 @@ const PLCDashboard = () => {
     </div>
   ));
 
-  // Clean Status Bar
+  // Enhanced Status Bar with Trigger Status
   const StatusBar = React.memo(() => (
     <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center space-x-6">
           <div className="flex items-center space-x-2">
             {deviceOnline ? 
               <Wifi className="h-4 w-4 text-green-500" /> : 
@@ -387,6 +440,17 @@ const PLCDashboard = () => {
               </span>
             )}
           </div>
+          
+          {/* Data Trigger Status */}
+          <div className="flex items-center space-x-2 text-sm">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+            <span className="text-gray-600">Data Sync:</span>
+            <span className="text-green-600 font-medium">✅ {triggerStatus.success}</span>
+            {triggerStatus.failed > 0 && (
+              <span className="text-red-600 font-medium">❌ {triggerStatus.failed}</span>
+            )}
+          </div>
+          
           <div className="flex items-center space-x-2">
             <Clock className="h-4 w-4 text-gray-400" />
             <span className="text-sm text-gray-600">
@@ -419,8 +483,8 @@ const PLCDashboard = () => {
             <div className="flex items-center space-x-3">
               <Activity className="h-8 w-8 text-blue-600" />
               <div>
-                <h1 className="text-xl font-bold text-gray-900">KISWOK INDUSTRIES</h1>
-                <p className="text-sm text-gray-500">Industrial Monitoring System</p>
+                <h1 className="text-xl font-bold text-gray-900">CLOUD SCADA</h1>
+                <p className="text-sm text-gray-500">KISWOK INDUSTRIES</p>
               </div>
             </div>
             <div className="text-right">
@@ -447,8 +511,38 @@ const PLCDashboard = () => {
           </div>
         )}
 
-        {/* Status Bar */}
+        {/* Enhanced Status Bar */}
         <StatusBar />
+
+        {/* System Status Info */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+          <div className="flex items-start space-x-3">
+            <Activity className="h-5 w-5 text-blue-600 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-medium text-blue-900 mb-1">System Status</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-blue-700">
+                <div>
+                  <span className="font-medium">Data Trigger:</span> Every 3 seconds
+                  <br />
+                  <span className="text-xs">PLC → Database sync active</span>
+                </div>
+                <div>
+                  <span className="font-medium">Display Refresh:</span> Every 5 seconds
+                  <br />
+                  <span className="text-xs">Real-time dashboard updates</span>
+                </div>
+                <div>
+                  <span className="font-medium">Successful Syncs:</span> {triggerStatus.success}
+                  <br />
+                  <span className="text-xs">
+                    Last triggered: {triggerStatus.lastTriggered ? 
+                      new Date(triggerStatus.lastTriggered).toLocaleTimeString('en-IN') : 'N/A'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Metrics Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
