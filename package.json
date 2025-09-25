@@ -23,7 +23,8 @@
     "react-datepicker": "^8.3.0",
     "react-dom": "^18.3.1",
     "react-hot-toast": "^2.5.1",
-    "react-router-dom": "^7.4.0"
+    "react-router-dom": "^7.4.0",
+    "recharts": "^3.2.1"
   },
   "devDependencies": {
     "@eslint/js": "^9.17.0",

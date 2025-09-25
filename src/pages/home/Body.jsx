@@ -1,101 +1,90 @@
-
-
-
-
-
-import React, { useState, useEffect, useCallback } from 'react';
-import { Power, Wifi, WifiOff, Clock, Activity, AlertTriangle, Settings, Zap, Battery, Gauge, Sun, Moon, RotateCcw, TrendingUp, TrendingDown, Shield, AlertCircle, BarChart3, Cpu, Thermometer } from 'lucide-react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { 
+  Power, Wifi, WifiOff, Clock, Activity, AlertTriangle, 
+  RotateCcw, FileText, ChevronLeft, ChevronRight, 
+  Download, Filter, Calendar 
+} from 'lucide-react';
 
 const PLCDashboard = () => {
   const [energyData, setEnergyData] = useState({
-    voltageR: null,
-    voltageY: null,
-    voltageB: null,
-    currentR: null,
-    currentY: null,
-    currentB: null,
-    kwh: null
+    voltageR: null, voltageY: null, voltageB: null,
+    currentR: null, currentY: null, currentB: null, kwh: null
   });
   
   const [deviceOnline, setDeviceOnline] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [darkMode, setDarkMode] = useState(false);
-  const [historicalData, setHistoricalData] = useState([]);
+  const [currentTime, setCurrentTime] = useState(new Date());
+  const [showReports, setShowReports] = useState(true);
+  const [reportData, setReportData] = useState([]);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [reportConfig, setReportConfig] = useState({
+    tag: 'voltageR',
+    fromDateTime: new Date(new Date().setDate(new Date().getDate() - 1)).toISOString().slice(0, 16),
+    toDateTime: new Date().toISOString().slice(0, 16)
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const itemsPerPage = 50;
 
-  const API_BASE = 'https://lewgxoxna8.execute-api.ap-south-1.amazonaws.com/Read';
+  const API_BASE = 'https://lewgxoxna8.execute-api.ap-south-1.amazonaws.com/Read/';
+  
+  // Refs for direct DOM manipulation to avoid React interference
+  const fromDateRef = useRef(null);
+  const toDateRef = useRef(null);
+  const isUserInteracting = useRef(false);
+  const autoRefreshRef = useRef(null);
+
+  // Update clock every second
+  useEffect(() => {
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchEnergyData = useCallback(async () => {
+    // Skip if user is actively using datetime inputs
+    if (isUserInteracting.current) {
+      return;
+    }
+
     try {
       setIsLoading(true);
       setError(null);
 
-      // Fetch all required addresses in one API call
       const addresses = '40099,40101,40103,40113,40115,40117,40231';
-      const response = await fetch(`${API_BASE}/?address=${addresses}&last=1`);
+      const response = await fetch(`${API_BASE}?address=${addresses}&last=1`);
       
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`API Error: ${response.status}`);
 
       const data = await response.json();
       
-      // Parse the response data based on addresses
       const addressMap = {
-        40099: 'voltageR',
-        40101: 'voltageY', 
-        40103: 'voltageB',
-        40113: 'currentR',
-        40115: 'currentY',
-        40117: 'currentB',
-        40231: 'kwh'
+        40099: 'voltageR', 40101: 'voltageY', 40103: 'voltageB',
+        40113: 'currentR', 40115: 'currentY', 40117: 'currentB', 40231: 'kwh'
       };
 
-      const newEnergyData = { ...energyData };
+      const newEnergyData = {};
       let mostRecentTimestamp = null;
 
-      // Process each data point
       data.forEach(item => {
         const parameter = addressMap[item.address];
         if (parameter) {
           newEnergyData[parameter] = parseFloat(item.value) || 0;
-          
-          // Track most recent timestamp
           if (!mostRecentTimestamp || new Date(item.timestamp) > new Date(mostRecentTimestamp)) {
             mostRecentTimestamp = item.timestamp;
           }
         }
       });
 
-      setEnergyData(newEnergyData);
+      setEnergyData(prev => ({...prev, ...newEnergyData}));
       setLastUpdate(mostRecentTimestamp);
 
-      // Check device connectivity (offline if no data for more than 10 seconds)
       if (mostRecentTimestamp) {
-        const now = new Date().getTime();
-        const lastDataTime = new Date(mostRecentTimestamp).getTime();
-        const timeDiff = (now - lastDataTime) / 1000;
-        setDeviceOnline(timeDiff <= 10);
+        const timeDiff = (new Date().getTime() - new Date(mostRecentTimestamp).getTime()) / 1000;
+        setDeviceOnline(timeDiff <= 30);
       } else {
         setDeviceOnline(false);
-      }
-
-      // Update historical data for trends
-      if (mostRecentTimestamp && newEnergyData.kwh !== null) {
-        setHistoricalData(prev => {
-          const newData = [...prev, {
-            timestamp: new Date(mostRecentTimestamp),
-            kwh: newEnergyData.kwh,
-            voltageR: newEnergyData.voltageR,
-            voltageY: newEnergyData.voltageY,
-            voltageB: newEnergyData.voltageB,
-            currentR: newEnergyData.currentR,
-            currentY: newEnergyData.currentY,
-            currentB: newEnergyData.currentB
-          }];
-          return newData.slice(-50); // Keep last 50 readings
-        });
       }
 
     } catch (err) {
@@ -107,546 +96,587 @@ const PLCDashboard = () => {
     }
   }, []);
 
+  // Convert datetime-local format to API format (YYYY-MM-DD HH:MM:SS)
+  const formatDateTimeForAPI = (datetimeLocal) => {
+    const date = new Date(datetimeLocal);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
+
+  const fetchReportData = useCallback(async (page = 1) => {
+    try {
+      setReportLoading(true);
+      
+      const addressMap = {
+        'voltageR': '40099', 'voltageY': '40101', 'voltageB': '40103',
+        'currentR': '40113', 'currentY': '40115', 'currentB': '40117', 'kwh': '40231'
+      };
+
+      // Get values directly from DOM to avoid React state issues
+      const fromDateTime = fromDateRef.current ? fromDateRef.current.value : reportConfig.fromDateTime;
+      const toDateTime = toDateRef.current ? toDateRef.current.value : reportConfig.toDateTime;
+      
+      const fromDateTimeFormatted = encodeURIComponent(formatDateTimeForAPI(fromDateTime));
+      const toDateTimeFormatted = encodeURIComponent(formatDateTimeForAPI(toDateTime));
+      
+      const apiUrl = `${API_BASE}?address=${addressMap[reportConfig.tag]}&from=${fromDateTimeFormatted}&to=${toDateTimeFormatted}`;
+      console.log('API URL:', apiUrl);
+      
+      const response = await fetch(apiUrl);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('API Response:', data);
+      
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid API response format');
+      }
+      
+      const formattedData = data.map(item => ({
+        timestamp: new Date(item.timestamp).toLocaleString('en-IN', {
+          timeZone: 'Asia/Kolkata', 
+          hour12: true,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        }),
+        value: parseFloat(item.value) || 0,
+        dateTime: new Date(item.timestamp)
+      })).sort((a, b) => b.dateTime - a.dateTime);
+
+      const total = formattedData.length;
+      const totalPagesCalc = Math.ceil(total / itemsPerPage);
+      const startIndex = (page - 1) * itemsPerPage;
+      const paginatedData = formattedData.slice(startIndex, startIndex + itemsPerPage);
+
+      setReportData(paginatedData);
+      setTotalPages(totalPagesCalc);
+      setCurrentPage(page);
+
+      console.log('Formatted data length:', formattedData.length);
+
+    } catch (err) {
+      console.error('Report data fetch failed:', err);
+      setError(`Report Error: ${err.message}`);
+      setReportData([]);
+    } finally {
+      setReportLoading(false);
+    }
+  }, [reportConfig.tag]);
+
+  // Setup controlled auto-refresh
   useEffect(() => {
-    fetchEnergyData();
-    const interval = setInterval(fetchEnergyData, 4000); // 4 second interval
-    return () => clearInterval(interval);
+    const startAutoRefresh = () => {
+      fetchEnergyData(); // Initial fetch
+      autoRefreshRef.current = setInterval(fetchEnergyData, 5000);
+    };
+
+    startAutoRefresh();
+
+    return () => {
+      if (autoRefreshRef.current) {
+        clearInterval(autoRefreshRef.current);
+      }
+    };
   }, [fetchEnergyData]);
+
+  // Auto-fetch initial report data
+  useEffect(() => {
+    if (showReports) {
+      fetchReportData(1);
+    }
+  }, [showReports, reportConfig.tag]);
 
   const formatDateTime = (timestamp) => {
     if (!timestamp) return 'N/A';
     return new Date(timestamp).toLocaleString('en-IN', {
-      timeZone: 'Asia/Kolkata',
-      hour12: true
+      timeZone: 'Asia/Kolkata', hour12: true
     });
   };
 
-  const calculateTrend = (parameter) => {
-    if (historicalData.length < 2) return null;
-    const recent = historicalData.slice(-5);
-    const avg1 = recent.slice(0, Math.floor(recent.length/2)).reduce((sum, item) => sum + (item[parameter] || 0), 0) / Math.floor(recent.length/2);
-    const avg2 = recent.slice(Math.floor(recent.length/2)).reduce((sum, item) => sum + (item[parameter] || 0), 0) / Math.ceil(recent.length/2);
-    return avg1 !== 0 ? ((avg2 - avg1) / avg1 * 100).toFixed(1) : 0;
+  const getTagDisplayName = (tag) => {
+    const tagNames = {
+      'voltageR': 'R Phase Voltage', 'voltageY': 'Y Phase Voltage', 'voltageB': 'B Phase Voltage',
+      'currentR': 'R Phase Current', 'currentY': 'Y Phase Current', 'currentB': 'B Phase Current',
+      'kwh': 'Energy (kWh)'
+    };
+    return tagNames[tag] || tag;
   };
 
-  const getStatusColor = (value, type) => {
-    if (value === null) return 'gray';
-    
-    if (type === 'voltage') {
-      if (value < 200) return 'red';
-      if (value > 250) return 'amber';
-      return 'emerald';
-    }
-    
-    if (type === 'current') {
-      if (value > 50) return 'red';
-      if (value > 30) return 'amber';
-      return 'emerald';
-    }
-    
-    return 'blue';
+  const getTagUnit = (tag) => {
+    if (tag.includes('voltage')) return 'V';
+    if (tag.includes('current')) return 'A';
+    if (tag === 'kwh') return 'kWh';
+    return '';
   };
 
-  const calculatePower = () => {
-    const { voltageR, voltageY, voltageB, currentR, currentY, currentB } = energyData;
-    if (!voltageR || !voltageY || !voltageB || !currentR || !currentY || !currentB) return null;
-    return ((voltageR * currentR) + (voltageY * currentY) + (voltageB * currentB)) / 1000; // kW
+  const getPhaseInfo = (tag) => {
+    if (tag === 'voltageR' || tag === 'currentR') return 'R Phase';
+    if (tag === 'voltageY' || tag === 'currentY') return 'Y Phase';
+    if (tag === 'voltageB' || tag === 'currentB') return 'B Phase';
+    if (tag === 'kwh') return 'Total';
+    return 'Unknown';
   };
 
-  const calculatePowerFactor = () => {
-    // Simplified power factor calculation (typically ranges 0.8-1.0 for industrial applications)
-    const power = calculatePower();
-    if (!power) return null;
-    return Math.min(0.85 + (Math.random() * 0.15), 1.0); // Simulated for demo
-  };
+  // Completely isolated datetime input handlers
+  const handleDateTimeEvents = (ref, isFromDate = true) => {
+    if (!ref.current) return;
 
-  const MetricCard = ({ title, value, unit, icon: Icon, address, type = 'default' }) => {
-    const statusColor = getStatusColor(value, type);
-    const trend = calculateTrend(type === 'voltage' ? address.includes('40099') ? 'voltageR' : address.includes('40101') ? 'voltageY' : 'voltageB' : 'kwh');
+    const input = ref.current;
     
-    return (
-      <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} 
-        border rounded-2xl p-4 sm:p-6 shadow-sm hover:shadow-xl transition-all duration-300 
-        hover:scale-102 backdrop-blur-sm ${darkMode ? 'bg-opacity-90' : 'bg-opacity-95'}`}>
-        
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center space-x-3">
-            <div className={`p-2 sm:p-3 rounded-xl bg-gradient-to-br from-${statusColor}-500 to-${statusColor}-600 shadow-lg`}>
-              <Icon className="h-4 w-4 sm:h-6 sm:w-6 text-white" />
-            </div>
-            <div>
-              <h3 className={`text-xs sm:text-sm font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-700'} uppercase tracking-wide`}>
-                {title}
-              </h3>
-              <span className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'} font-mono`}>
-                #{address}
-              </span>
-            </div>
-          </div>
-          
-          {/* Status Indicator */}
+    // Prevent any React interference during datetime selection
+    const handleFocus = () => {
+      console.log('DateTime focused - stopping auto-refresh');
+      isUserInteracting.current = true;
+      if (autoRefreshRef.current) {
+        clearInterval(autoRefreshRef.current);
+      }
+    };
+
+    const handleBlur = () => {
+      console.log('DateTime blurred - restarting auto-refresh');
+      setTimeout(() => {
+        isUserInteracting.current = false;
+        // Restart auto-refresh
+        if (autoRefreshRef.current) {
+          clearInterval(autoRefreshRef.current);
+        }
+        autoRefreshRef.current = setInterval(fetchEnergyData, 5000);
+      }, 500);
+    };
+
+    const handleChange = () => {
+      // Update React state to keep it in sync
+      if (isFromDate) {
+        setReportConfig(prev => ({ ...prev, fromDateTime: input.value }));
+      } else {
+        setReportConfig(prev => ({ ...prev, toDateTime: input.value }));
+      }
+    };
+
+    // Add event listeners directly to DOM
+    input.addEventListener('focus', handleFocus);
+    input.addEventListener('blur', handleBlur);
+    input.addEventListener('change', handleChange);
+    input.addEventListener('click', handleFocus); // Also handle clicks
+
+    // Cleanup function
+    return () => {
+      input.removeEventListener('focus', handleFocus);
+      input.removeEventListener('blur', handleBlur);
+      input.removeEventListener('change', handleChange);
+      input.removeEventListener('click', handleFocus);
+    };
+  };
+
+  // Initialize datetime event handlers
+  useEffect(() => {
+    const cleanup1 = handleDateTimeEvents(fromDateRef, true);
+    const cleanup2 = handleDateTimeEvents(toDateRef, false);
+
+    return () => {
+      cleanup1?.();
+      cleanup2?.();
+    };
+  }, []);
+
+  // Minimal Metric Card Component
+  const MetricCard = React.memo(({ title, value, unit, status = 'normal' }) => (
+    <div className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow">
+      <div className="flex items-center justify-between mb-2">
+        <h3 className="text-sm font-medium text-gray-600">{title}</h3>
+        <div className={`w-2 h-2 rounded-full ${
+          status === 'warning' ? 'bg-amber-400' : 
+          status === 'error' ? 'bg-red-400' : 'bg-green-400'
+        }`}></div>
+      </div>
+      <div className="flex items-baseline space-x-1">
+        <span className="text-2xl font-bold text-gray-900">
+          {value !== null ? parseFloat(value).toFixed(2) : '--'}
+        </span>
+        <span className="text-sm text-gray-500">{unit}</span>
+      </div>
+    </div>
+  ));
+
+  // Clean Status Bar
+  const StatusBar = React.memo(() => (
+    <div className="bg-white border border-gray-200 rounded-lg p-4 mb-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <div className={`w-2 h-2 sm:w-3 sm:h-3 rounded-full bg-${statusColor}-500 ${deviceOnline && value !== null ? 'animate-pulse' : ''}`}></div>
-            {trend && Math.abs(parseFloat(trend)) > 0.1 && (
-              <div className={`flex items-center space-x-1 ${parseFloat(trend) > 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {parseFloat(trend) > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-                <span className="text-xs font-medium">{Math.abs(trend)}%</span>
-              </div>
+            {deviceOnline ? 
+              <Wifi className="h-4 w-4 text-green-500" /> : 
+              <WifiOff className="h-4 w-4 text-red-500" />
+            }
+            <span className="text-sm font-medium">
+              {deviceOnline ? 'Online' : 'Offline'}
+            </span>
+            {isUserInteracting.current && (
+              <span className="text-xs text-orange-500 bg-orange-50 px-2 py-1 rounded">
+                Auto-refresh paused
+              </span>
             )}
           </div>
-        </div>
-
-        {/* Value Display */}
-        <div className="mb-3">
-          {value !== null ? (
-            <div className="flex items-baseline space-x-2">
-              <span className={`text-2xl sm:text-4xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} 
-                bg-gradient-to-r from-${statusColor}-600 to-${statusColor}-800 bg-clip-text text-transparent`}>
-                {parseFloat(value).toFixed(2)}
-              </span>
-              <span className={`text-sm sm:text-lg font-semibold ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>
-                {unit}
-              </span>
-            </div>
-          ) : (
-            <div className={`h-8 sm:h-12 ${darkMode ? 'bg-gray-700' : 'bg-gray-200'} rounded-lg animate-pulse w-32`}></div>
-          )}
-        </div>
-
-        {/* Status Bar */}
-        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 sm:h-2">
-          <div 
-            className={`bg-gradient-to-r from-${statusColor}-500 to-${statusColor}-600 h-full rounded-full transition-all duration-500`}
-            style={{ 
-              width: value !== null ? 
-                type === 'voltage' ? `${Math.min((value / 250) * 100, 100)}%` :
-                type === 'current' ? `${Math.min((value / 100) * 100, 100)}%` : 
-                '100%' : '0%' 
-            }}
-          ></div>
-        </div>
-      </div>
-    );
-  };
-
-  const PhaseVisualization = () => (
-    <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} 
-      border rounded-2xl p-4 sm:p-6 shadow-sm hover:shadow-xl transition-all duration-300`}>
-      
-      <div className="flex items-center justify-between mb-6">
-        <h3 className={`text-lg sm:text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-          Three-Phase Monitor
-        </h3>
-        <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
-          deviceOnline ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
-        }`}>
-          {deviceOnline ? 'LIVE' : 'OFFLINE'}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-3 gap-3 sm:gap-6">
-        {[
-          { phase: 'R', voltage: energyData.voltageR, current: energyData.currentR, color: 'red' },
-          { phase: 'Y', voltage: energyData.voltageY, current: energyData.currentY, color: 'yellow' },
-          { phase: 'B', voltage: energyData.voltageB, current: energyData.currentB, color: 'blue' }
-        ].map(({ phase, voltage, current, color }) => (
-          <div key={phase} className="text-center">
-            {/* Phase Circle */}
-            <div className={`relative w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-3 rounded-full 
-              border-4 border-${color}-500 bg-gradient-to-br from-${color}-100 to-${color}-200 
-              ${darkMode ? 'from-' + color + '-900 to-' + color + '-800' : ''} 
-              shadow-lg overflow-hidden`}>
-              
-              {/* Animated Fill */}
-              <div 
-                className={`absolute bottom-0 left-0 right-0 bg-gradient-to-t from-${color}-500 to-${color}-400 
-                  transition-all duration-1000 ${voltage > 200 ? 'opacity-80' : 'opacity-30'}`}
-                style={{ 
-                  height: voltage ? `${Math.min((voltage / 250) * 100, 100)}%` : '0%' 
-                }}
-              ></div>
-              
-              {/* Phase Label */}
-              <div className="absolute inset-0 flex items-center justify-center">
-                <span className={`text-lg sm:text-xl font-bold ${
-                  voltage > 200 ? 'text-white' : darkMode ? 'text-gray-200' : 'text-gray-700'
-                } drop-shadow-lg`}>
-                  {phase}
-                </span>
-              </div>
-              
-              {/* Pulse Effect */}
-              {deviceOnline && voltage > 200 && (
-                <div className={`absolute inset-0 rounded-full border-2 border-${color}-400 animate-ping opacity-20`}></div>
-              )}
-            </div>
-
-            {/* Values */}
-            <div className={`text-sm sm:text-base font-bold ${darkMode ? 'text-white' : 'text-gray-900'} mb-1`}>
-              {voltage ? `${voltage.toFixed(1)}V` : '--V'}
-            </div>
-            <div className={`text-xs sm:text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              {current ? `${current.toFixed(2)}A` : '--A'}
-            </div>
+          <div className="flex items-center space-x-2">
+            <Clock className="h-4 w-4 text-gray-400" />
+            <span className="text-sm text-gray-600">
+              Last update: {formatDateTime(lastUpdate)}
+            </span>
           </div>
-        ))}
+        </div>
+        <button
+          onClick={() => {
+            isUserInteracting.current = false;
+            fetchEnergyData();
+          }}
+          disabled={isLoading}
+          className="flex items-center space-x-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 
+            disabled:opacity-50 rounded-md text-sm font-medium transition-colors"
+        >
+          <RotateCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+          <span>Refresh</span>
+        </button>
       </div>
     </div>
-  );
-
-  const EnergyConsumptionCard = () => {
-    const power = calculatePower();
-    const powerFactor = calculatePowerFactor();
-    const efficiency = power && energyData.kwh ? Math.min((power * 100) / (energyData.kwh + 1), 100) : null;
-
-    return (
-      <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} 
-        border rounded-2xl p-4 sm:p-6 shadow-sm hover:shadow-xl transition-all duration-300`}>
-        
-        <div className="flex items-center space-x-3 mb-6">
-          <div className="p-2 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg">
-            <Battery className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-          </div>
-          <h3 className={`text-lg sm:text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} uppercase tracking-wide`}>
-            Energy Consumption
-          </h3>
-        </div>
-
-        <div className="space-y-6">
-          {/* Total Energy */}
-          <div className="text-center">
-            <div className={`text-4xl sm:text-6xl font-bold ${darkMode ? 'text-emerald-400' : 'text-emerald-600'} mb-2`}>
-              {energyData.kwh ? energyData.kwh.toFixed(2) : '--'}
-            </div>
-            <div className={`text-lg font-semibold ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-              kWh Total
-            </div>
-          </div>
-
-          {/* Power Metrics */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center">
-              <div className={`text-xl sm:text-2xl font-bold ${darkMode ? 'text-blue-400' : 'text-blue-600'}`}>
-                {power ? power.toFixed(2) : '--'}
-              </div>
-              <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                kW Power
-              </div>
-            </div>
-            <div className="text-center">
-              <div className={`text-xl sm:text-2xl font-bold ${darkMode ? 'text-purple-400' : 'text-purple-600'}`}>
-                {powerFactor ? powerFactor.toFixed(2) : '--'}
-              </div>
-              <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                Power Factor
-              </div>
-            </div>
-          </div>
-
-          {/* Efficiency Bar */}
-          {efficiency && (
-            <div>
-              <div className="flex justify-between mb-2">
-                <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-700'}`}>
-                  System Efficiency
-                </span>
-                <span className={`text-sm font-bold ${darkMode ? 'text-emerald-400' : 'text-emerald-600'}`}>
-                  {efficiency.toFixed(1)}%
-                </span>
-              </div>
-              <div className={`w-full ${darkMode ? 'bg-gray-700' : 'bg-gray-200'} rounded-full h-3`}>
-                <div 
-                  className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-full rounded-full transition-all duration-500"
-                  style={{ width: `${efficiency}%` }}
-                ></div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
-
-  const SystemOverview = () => (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8">
-      <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} 
-        border rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all duration-300`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              {deviceOnline ? 'ONLINE' : 'OFFLINE'}
-            </div>
-            <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Device Status
-            </div>
-          </div>
-          <Cpu className={`h-8 w-8 ${deviceOnline ? 'text-emerald-500' : 'text-red-500'}`} />
-        </div>
-      </div>
-
-      <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} 
-        border rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all duration-300`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              {historicalData.length}
-            </div>
-            <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Data Points
-            </div>
-          </div>
-          <BarChart3 className={`h-8 w-8 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-        </div>
-      </div>
-
-      <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} 
-        border rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all duration-300`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              4.0s
-            </div>
-            <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Update Rate
-            </div>
-          </div>
-          <Clock className={`h-8 w-8 ${darkMode ? 'text-amber-400' : 'text-amber-600'}`} />
-        </div>
-      </div>
-
-      <div className={`${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} 
-        border rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all duration-300`}>
-        <div className="flex items-center justify-between">
-          <div>
-            <div className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-              Normal
-            </div>
-            <div className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-              Temperature
-            </div>
-          </div>
-          <Thermometer className={`h-8 w-8 ${darkMode ? 'text-green-400' : 'text-green-600'}`} />
-        </div>
-      </div>
-    </div>
-  );
+  ));
 
   return (
-    <div className={`min-h-screen transition-all duration-500 ${
-      darkMode 
-        ? 'bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900' 
-        : 'bg-gradient-to-br from-gray-50 via-blue-50 to-gray-100'
-    }`}>
-      
-      {/* Industrial Header */}
-      <div className={`${darkMode 
-        ? 'bg-gradient-to-r from-gray-800 via-gray-900 to-gray-800 border-gray-700' 
-        : 'bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 border-gray-300'
-      } border-b shadow-2xl sticky top-0 z-50 backdrop-blur-sm`}>
-        
-        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16 sm:h-20">
-            
-            {/* Logo Section */}
-            <div className="flex items-center space-x-3 sm:space-x-4">
-              <div className="relative">
-                <div className="p-2 sm:p-3 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl shadow-xl">
-                  <Activity className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
-                </div>
-                <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full animate-pulse"></div>
-              </div>
+    <div className="min-h-screen bg-gray-100">
+      {/* Clean Header */}
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center space-x-3">
+              <Activity className="h-8 w-8 text-blue-600" />
               <div>
-                <h1 className="text-lg sm:text-2xl font-bold text-white tracking-tight">
-                  KISWOK INDUSTRIES
-                </h1>
-                <p className="text-xs sm:text-sm text-blue-200 font-medium">
-                  Energy Management System
-                </p>
+                <h1 className="text-xl font-bold text-gray-900">KISWOK INDUSTRIES</h1>
+                <p className="text-sm text-gray-500">Industrial Monitoring System</p>
               </div>
             </div>
-            
-            {/* Control Panel */}
-            <div className="flex items-center space-x-2 sm:space-x-4">
-              
-              {/* Connection Status */}
-              <div className={`flex items-center space-x-2 sm:space-x-3 px-2 sm:px-4 py-2 rounded-xl 
-                border-2 transition-all duration-300 ${
-                deviceOnline 
-                  ? 'bg-emerald-900 bg-opacity-30 border-emerald-500 text-emerald-300' 
-                  : 'bg-red-900 bg-opacity-30 border-red-500 text-red-300'
-              }`}>
-                {deviceOnline ? (
-                  <Wifi className="h-4 w-4 sm:h-5 sm:w-5 animate-pulse" />
-                ) : (
-                  <WifiOff className="h-4 w-4 sm:h-5 sm:w-5" />
-                )}
-                <span className="hidden sm:inline font-bold text-xs sm:text-sm">
-                  {deviceOnline ? 'CONNECTED' : 'DISCONNECTED'}
-                </span>
+            <div className="text-right">
+              <div className="text-sm font-medium text-gray-900">
+                {currentTime.toLocaleTimeString('en-IN', { hour12: true })}
               </div>
-              
-              {/* Theme Toggle */}
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`p-2 sm:p-3 rounded-xl transition-all duration-300 ${
-                  darkMode 
-                    ? 'bg-amber-500 text-gray-900 hover:bg-amber-400 shadow-lg' 
-                    : 'bg-slate-700 text-amber-400 hover:bg-slate-600 shadow-lg'
-                }`}
-              >
-                {darkMode ? <Sun className="h-4 w-4 sm:h-5 sm:w-5" /> : <Moon className="h-4 w-4 sm:h-5 sm:w-5" />}
-              </button>
-              
-              {/* Refresh Control */}
-              <button
-                onClick={fetchEnergyData}
-                disabled={isLoading}
-                className="flex items-center space-x-2 px-3 sm:px-4 py-2 sm:py-3 bg-blue-600 hover:bg-blue-700 
-                  disabled:bg-gray-600 text-white rounded-xl font-semibold transition-all duration-300 
-                  shadow-lg hover:shadow-xl disabled:opacity-50"
-              >
-                <RotateCcw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                <span className="hidden sm:inline text-sm">REFRESH</span>
-              </button>
+              <div className="text-xs text-gray-500">
+                {currentTime.toLocaleDateString('en-IN')}
+              </div>
             </div>
           </div>
         </div>
-      </div>
+      </header>
 
-      {/* Main Dashboard Content */}
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
-        
-        {/* Critical Alert */}
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Error Alert */}
         {error && (
-          <div className="mb-6 bg-gradient-to-r from-red-500 to-red-600 border border-red-400 rounded-2xl p-4 shadow-xl">
-            <div className="flex items-center space-x-3">
-              <AlertTriangle className="h-6 w-6 text-white animate-pulse" />
-              <div>
-                <h3 className="text-sm font-bold text-white">SYSTEM ALERT</h3>
-                <p className="text-sm text-red-100 mt-1">{error}</p>
-              </div>
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <AlertTriangle className="h-5 w-5 text-red-500" />
+              <p className="text-sm text-red-700">System Alert: {error}</p>
             </div>
           </div>
         )}
 
-        {/* System Status Bar */}
-        <div className={`mb-6 ${darkMode ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'} 
-          border rounded-2xl p-4 shadow-lg backdrop-blur-sm`}>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-2 sm:space-y-0">
-            <div className="flex items-center space-x-3">
-              <Shield className={`h-5 w-5 ${deviceOnline ? 'text-emerald-500' : 'text-red-500'}`} />
-              <span className={`text-sm font-semibold ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                System Status: 
-                <span className={`ml-2 ${deviceOnline ? 'text-emerald-600' : 'text-red-600'}`}>
-                  {deviceOnline ? 'OPERATIONAL' : 'FAULT'}
-                </span>
-              </span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <Clock className={`h-4 w-4 ${darkMode ? 'text-blue-400' : 'text-blue-600'}`} />
-              <span className={`text-xs sm:text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-                Last Update: {formatDateTime(lastUpdate)}
-              </span>
-            </div>
-          </div>
+        {/* Status Bar */}
+        <StatusBar />
+
+        {/* Metrics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <MetricCard 
+            title="R Phase Voltage" 
+            value={energyData.voltageR} 
+            unit="V" 
+            status={energyData.voltageR < 200 || energyData.voltageR > 250 ? 'warning' : 'normal'} 
+          />
+          <MetricCard 
+            title="Y Phase Voltage" 
+            value={energyData.voltageY} 
+            unit="V"
+            status={energyData.voltageY < 200 || energyData.voltageY > 250 ? 'warning' : 'normal'} 
+          />
+          <MetricCard 
+            title="B Phase Voltage" 
+            value={energyData.voltageB} 
+            unit="V"
+            status={energyData.voltageB < 200 || energyData.voltageB > 250 ? 'warning' : 'normal'} 
+          />
+          <MetricCard 
+            title="Total Energy" 
+            value={energyData.kwh} 
+            unit="kWh" 
+          />
         </div>
 
-        {/* System Overview */}
-        <SystemOverview />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <MetricCard title="R Phase Current" value={energyData.currentR} unit="A" />
+          <MetricCard title="Y Phase Current" value={energyData.currentY} unit="A" />
+          <MetricCard title="B Phase Current" value={energyData.currentB} unit="A" />
+        </div>
 
-        {/* Voltage Monitoring */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex items-center space-x-3 mb-4 sm:mb-6">
-            <div className="p-2 bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg">
-              <Zap className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+        {/* Reports Section */}
+        {showReports && (
+          <div className="bg-white border border-gray-200 rounded-lg mb-6">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <FileText className="h-5 w-5 text-gray-600" />
+                  <h2 className="text-lg font-semibold text-gray-900">Historical Reports</h2>
+                </div>
+                <button
+                  onClick={() => setShowReports(false)}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded-md transition-colors"
+                >
+                  Hide Reports
+                </button>
+              </div>
             </div>
-            <h2 className={`text-lg sm:text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} uppercase tracking-wide`}>
-              Voltage Monitoring
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-            <MetricCard
-              title="R Phase Voltage"
-              value={energyData.voltageR}
-              unit="V"
-              icon={Zap}
-              address="40099"
-              type="voltage"
-            />
-            <MetricCard
-              title="Y Phase Voltage"
-              value={energyData.voltageY}
-              unit="V"
-              icon={Zap}
-              address="40101"
-              type="voltage"
-            />
-            <MetricCard
-              title="B Phase Voltage"
-              value={energyData.voltageB}
-              unit="V"
-              icon={Zap}
-              address="40103"
-              type="voltage"
-            />
-          </div>
-        </div>
 
-        {/* Current Monitoring */}
-        <div className="mb-6 sm:mb-8">
-          <div className="flex items-center space-x-3 mb-4 sm:mb-6">
-            <div className="p-2 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg">
-              <Gauge className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+            <div className="p-6 space-y-6">
+              {/* API Status Display */}
+              <div className="text-sm text-gray-500 mb-4 p-3 bg-gray-50 rounded-lg">
+                <div className="font-medium mb-2">Report Status:</div>
+                <div>• Parameter: {getTagDisplayName(reportConfig.tag)} ({getPhaseInfo(reportConfig.tag)})</div>
+                <div>• Data Count: {reportData.length} records</div>
+                <div>• Loading: {reportLoading ? 'Yes' : 'No'}</div>
+              </div>
+
+              {/* Completely Isolated DateTime Inputs */}
+              <div className="bg-gray-50 rounded-lg p-6">
+                <h3 className="text-lg font-medium text-gray-900 mb-4">Report Configuration</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Parameter
+                    </label>
+                    <select
+                      value={reportConfig.tag}
+                      onChange={(e) => setReportConfig(prev => ({...prev, tag: e.target.value}))}
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-md text-sm bg-white
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    >
+                      <option value="voltageR">R Phase Voltage</option>
+                      <option value="voltageY">Y Phase Voltage</option>
+                      <option value="voltageB">B Phase Voltage</option>
+                      <option value="currentR">R Phase Current</option>
+                      <option value="currentY">Y Phase Current</option>
+                      <option value="currentB">B Phase Current</option>
+                      <option value="kwh">Energy (kWh)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      From Date & Time
+                    </label>
+                    <input
+                      ref={fromDateRef}
+                      type="datetime-local"
+                      defaultValue={reportConfig.fromDateTime}
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-md text-sm bg-white
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      To Date & Time
+                    </label>
+                    <input
+                      ref={toDateRef}
+                      type="datetime-local"
+                      defaultValue={reportConfig.toDateTime}
+                      className="w-full px-3 py-2.5 border border-gray-300 rounded-md text-sm bg-white
+                        focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+
+                  <div className="flex items-end">
+                    <button
+                      onClick={() => fetchReportData(1)}
+                      disabled={reportLoading}
+                      className="w-full px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 
+                        disabled:cursor-not-allowed text-white text-sm font-medium rounded-md transition-colors
+                        flex items-center justify-center space-x-2"
+                    >
+                      {reportLoading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                          <span>Loading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Filter className="h-4 w-4" />
+                          <span>Generate Report</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Data Summary with Phase Info */}
+              {reportData.length > 0 && !reportLoading && (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-blue-50 rounded-lg">
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-blue-600">{getPhaseInfo(reportConfig.tag)}</div>
+                    <div className="text-sm text-gray-600">Phase</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-blue-600">{reportData.length}</div>
+                    <div className="text-sm text-gray-600">Data Points</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-blue-600">
+                      {reportData.length > 0 ? Math.max(...reportData.map(d => d.value)).toFixed(2) : '0.00'}
+                    </div>
+                    <div className="text-sm text-gray-600">Max Value</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-xl font-bold text-blue-600">
+                      {reportData.length > 0 ? Math.min(...reportData.map(d => d.value)).toFixed(2) : '0.00'}
+                    </div>
+                    <div className="text-sm text-gray-600">Min Value</div>
+                  </div>
+                </div>
+              )}
+
+              {/* Enhanced Data Table */}
+              {reportData.length > 0 && !reportLoading && (
+                <div className="bg-white">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {getTagDisplayName(reportConfig.tag)} - {getPhaseInfo(reportConfig.tag)} Data
+                    </h3>
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => fetchReportData(currentPage - 1)}
+                        disabled={currentPage === 1 || reportLoading}
+                        className="p-2 border border-gray-300 rounded-md disabled:opacity-50 
+                          disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                      </button>
+                      <span className="px-3 py-1 text-sm text-gray-600 bg-gray-100 rounded-md">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button
+                        onClick={() => fetchReportData(currentPage + 1)}
+                        disabled={currentPage === totalPages || reportLoading}
+                        className="p-2 border border-gray-300 rounded-md disabled:opacity-50 
+                          disabled:cursor-not-allowed hover:bg-gray-50 transition-colors"
+                      >
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Timestamp
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Phase
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Parameter
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Value
+                          </th>
+                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                            Unit
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white divide-y divide-gray-200">
+                        {reportData.map((item, index) => (
+                          <tr key={index} className="hover:bg-gray-50 transition-colors">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {item.timestamp}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                              {getPhaseInfo(reportConfig.tag)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                              {reportConfig.tag.includes('voltage') ? 'Voltage' : 
+                               reportConfig.tag.includes('current') ? 'Current' : 'Energy'}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-lg font-bold text-gray-900">
+                              {item.value.toFixed(2)}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                              {getTagUnit(reportConfig.tag)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* No Data State */}
+              {reportData.length === 0 && !reportLoading && (
+                <div className="text-center py-8 text-gray-500">
+                  <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg font-medium">No data found</p>
+                  <p className="text-sm">Try adjusting the date range or parameter selection.</p>
+                  <button
+                    onClick={() => fetchReportData(1)}
+                    className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
             </div>
-            <h2 className={`text-lg sm:text-xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} uppercase tracking-wide`}>
-              Current Monitoring
-            </h2>
           </div>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-            <MetricCard
-              title="R Phase Current"
-              value={energyData.currentR}
-              unit="A"
-              icon={Gauge}
-              address="40113"
-              type="current"
-            />
-            <MetricCard
-              title="Y Phase Current"
-              value={energyData.currentY}
-              unit="A"
-              icon={Gauge}
-              address="40115"
-              type="current"
-            />
-            <MetricCard
-              title="B Phase Current"
-              value={energyData.currentB}
-              unit="A"
-              icon={Gauge}
-              address="40117"
-              type="current"
-            />
-          </div>
-        </div>
+        )}
 
-        {/* Phase Visualization & Energy */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
-          <PhaseVisualization />
-          <EnergyConsumptionCard />
-        </div>
+        {!showReports && (
+          <div className="bg-white border border-gray-200 rounded-lg p-6 text-center">
+            <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Historical Reports</h3>
+            <p className="text-gray-600 mb-4">View detailed historical data for all parameters</p>
+            <button
+              onClick={() => setShowReports(true)}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
+            >
+              Show Reports
+            </button>
+          </div>
+        )}
 
         {/* Footer */}
-        <div className={`text-center py-6 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
-          <p className="text-sm">
-            KISWOK INDUSTRIES Energy Management System - Real-time Industrial Monitoring
-          </p>
-          <p className="text-xs mt-2">
-            Last updated: {formatDateTime(lastUpdate)} | Refresh rate: 4 seconds
-          </p>
-        </div>
-      </div>
+        <footer className="text-center py-6 text-sm text-gray-500">
+          Developed by{' '}
+          <a 
+            href="https://alphatechsolutions.in/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-blue-600 hover:text-blue-700"
+          >
+            Alpha Tech Solutions
+          </a>
+        </footer>
+      </main>
     </div>
   );
 };
