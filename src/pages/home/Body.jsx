@@ -2,8 +2,18 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   Power, Wifi, WifiOff, Clock, Activity, AlertTriangle, 
   RotateCcw, FileText, ChevronLeft, ChevronRight, 
-  Download, Filter, Calendar 
+  Download, Filter, Calendar, BarChart3
 } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts';
 
 const PLCDashboard = () => {
   const [energyData, setEnergyData] = useState({
@@ -26,6 +36,7 @@ const PLCDashboard = () => {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [showChart, setShowChart] = useState(true);
   const itemsPerPage = 50;
 
   const API_BASE = 'https://lewgxoxna8.execute-api.ap-south-1.amazonaws.com/Read/';
@@ -152,16 +163,24 @@ const PLCDashboard = () => {
           minute: '2-digit',
           second: '2-digit'
         }),
+        shortTime: new Date(item.timestamp).toLocaleString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          month: 'short',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }),
         value: parseFloat(item.value) || 0,
         dateTime: new Date(item.timestamp)
-      })).sort((a, b) => b.dateTime - a.dateTime);
+      })).sort((a, b) => a.dateTime - b.dateTime); // Sort chronologically for chart
 
       const total = formattedData.length;
       const totalPagesCalc = Math.ceil(total / itemsPerPage);
       const startIndex = (page - 1) * itemsPerPage;
       const paginatedData = formattedData.slice(startIndex, startIndex + itemsPerPage);
 
-      setReportData(paginatedData);
+      setReportData(formattedData); // Store all data for chart
       setTotalPages(totalPagesCalc);
       setCurrentPage(page);
 
@@ -230,6 +249,14 @@ const PLCDashboard = () => {
     return 'Unknown';
   };
 
+  const getChartColor = (tag) => {
+    if (tag === 'voltageR' || tag === 'currentR') return '#ef4444'; // Red
+    if (tag === 'voltageY' || tag === 'currentY') return '#eab308'; // Yellow
+    if (tag === 'voltageB' || tag === 'currentB') return '#3b82f6'; // Blue
+    if (tag === 'kwh') return '#10b981'; // Green
+    return '#6366f1'; // Default purple
+  };
+
   // Completely isolated datetime input handlers
   const handleDateTimeEvents = (ref, isFromDate = true) => {
     if (!ref.current) return;
@@ -291,6 +318,36 @@ const PLCDashboard = () => {
       cleanup2?.();
     };
   }, []);
+
+  // Custom Tooltip for the chart
+  const CustomTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-white border border-gray-300 rounded-lg p-3 shadow-lg">
+          <p className="text-sm font-medium text-gray-900">{`Time: ${label}`}</p>
+          <p className="text-sm text-blue-600">
+            {`${getTagDisplayName(reportConfig.tag)}: ${payload[0].value.toFixed(2)} ${getTagUnit(reportConfig.tag)}`}
+          </p>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Prepare chart data - sample every nth point if too many data points
+  const getChartData = () => {
+    if (reportData.length === 0) return [];
+    
+    let chartData = reportData;
+    
+    // If more than 100 points, sample to reduce clutter
+    if (reportData.length > 100) {
+      const step = Math.ceil(reportData.length / 100);
+      chartData = reportData.filter((_, index) => index % step === 0);
+    }
+    
+    return chartData;
+  };
 
   // Minimal Metric Card Component
   const MetricCard = React.memo(({ title, value, unit, status = 'normal' }) => (
@@ -528,9 +585,9 @@ const PLCDashboard = () => {
                 </div>
               </div>
 
-              {/* Data Summary with Phase Info */}
+              {/* Data Summary with Phase Info and Chart Toggle */}
               {reportData.length > 0 && !reportLoading && (
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 p-4 bg-blue-50 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-5 gap-4 p-4 bg-blue-50 rounded-lg">
                   <div className="text-center">
                     <div className="text-xl font-bold text-blue-600">{getPhaseInfo(reportConfig.tag)}</div>
                     <div className="text-sm text-gray-600">Phase</div>
@@ -551,6 +608,74 @@ const PLCDashboard = () => {
                     </div>
                     <div className="text-sm text-gray-600">Min Value</div>
                   </div>
+                  <div className="text-center">
+                    <button
+                      onClick={() => setShowChart(!showChart)}
+                      className="flex items-center justify-center space-x-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                      <span>{showChart ? 'Hide Chart' : 'Show Chart'}</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Line Chart Section */}
+              {reportData.length > 0 && !reportLoading && showChart && (
+                <div className="bg-white border border-gray-200 rounded-lg p-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {getTagDisplayName(reportConfig.tag)} Trend Analysis
+                    </h3>
+                    <div className="flex items-center space-x-2 text-sm text-gray-600">
+                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getChartColor(reportConfig.tag) }}></div>
+                      <span>{getPhaseInfo(reportConfig.tag)} - {getTagUnit(reportConfig.tag)}</span>
+                    </div>
+                  </div>
+                  
+                  <div style={{ width: '100%', height: '400px' }}>
+                    <ResponsiveContainer>
+                      <LineChart
+                        data={getChartData()}
+                        margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                        <XAxis 
+                          dataKey="shortTime" 
+                          tick={{ fontSize: 12 }}
+                          angle={-45}
+                          textAnchor="end"
+                          height={80}
+                          interval="preserveStartEnd"
+                        />
+                        <YAxis 
+                          tick={{ fontSize: 12 }}
+                          label={{ 
+                            value: `${getTagDisplayName(reportConfig.tag)} (${getTagUnit(reportConfig.tag)})`, 
+                            angle: -90, 
+                            position: 'insideLeft',
+                            style: { textAnchor: 'middle' }
+                          }}
+                        />
+                        <Tooltip content={<CustomTooltip />} />
+                        <Legend />
+                        <Line
+                          type="monotone"
+                          dataKey="value"
+                          stroke={getChartColor(reportConfig.tag)}
+                          strokeWidth={2}
+                          dot={{ r: 3 }}
+                          activeDot={{ r: 5, stroke: getChartColor(reportConfig.tag), strokeWidth: 2 }}
+                          name={`${getTagDisplayName(reportConfig.tag)} (${getTagUnit(reportConfig.tag)})`}
+                        />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                  
+                  <div className="mt-4 text-sm text-gray-600 text-center">
+                    Showing {getChartData().length} of {reportData.length} data points • 
+                    Time range: {reportData.length > 0 ? reportData[0].shortTime : ''} to {reportData.length > 0 ? reportData[reportData.length - 1].shortTime : ''}
+                  </div>
                 </div>
               )}
 
@@ -559,7 +684,7 @@ const PLCDashboard = () => {
                 <div className="bg-white">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-900">
-                      {getTagDisplayName(reportConfig.tag)} - {getPhaseInfo(reportConfig.tag)} Data
+                      {getTagDisplayName(reportConfig.tag)} - {getPhaseInfo(reportConfig.tag)} Data Table
                     </h3>
                     <div className="flex items-center space-x-2">
                       <button
@@ -571,7 +696,7 @@ const PLCDashboard = () => {
                         <ChevronLeft className="h-4 w-4" />
                       </button>
                       <span className="px-3 py-1 text-sm text-gray-600 bg-gray-100 rounded-md">
-                        Page {currentPage} of {totalPages}
+                        Showing all {reportData.length} records
                       </span>
                       <button
                         onClick={() => fetchReportData(currentPage + 1)}
@@ -584,9 +709,9 @@ const PLCDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="overflow-x-auto border border-gray-200 rounded-lg">
+                  <div className="overflow-x-auto border border-gray-200 rounded-lg max-h-96">
                     <table className="w-full">
-                      <thead className="bg-gray-50">
+                      <thead className="bg-gray-50 sticky top-0">
                         <tr>
                           <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                             Timestamp
@@ -606,12 +731,12 @@ const PLCDashboard = () => {
                         </tr>
                       </thead>
                       <tbody className="bg-white divide-y divide-gray-200">
-                        {reportData.map((item, index) => (
+                        {reportData.slice().reverse().map((item, index) => (
                           <tr key={index} className="hover:bg-gray-50 transition-colors">
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                               {item.timestamp}
                             </td>
-                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-blue-600">
+                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: getChartColor(reportConfig.tag) }}>
                               {getPhaseInfo(reportConfig.tag)}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
