@@ -22,8 +22,9 @@ const Container = () => {
     toDateTime: new Date().toISOString().slice(0, 16)
   });
 
-  // API endpoints
-  const API_BASE = 'https://lewgxoxna8.execute-api.ap-south-1.amazonaws.com/Read';
+  // API endpoints - SEPARATED FOR DIFFERENT PURPOSES
+  const REALTIME_API = 'https://lewgxoxna8.execute-api.ap-south-1.amazonaws.com/Read'; // For real-time data only
+  const REPORT_API = 'https://yv2f6ynj93.execute-api.ap-south-1.amazonaws.com/default/Report'; // For reports and trends
   const TRIGGER_API = 'https://yv2f6ynj93.execute-api.ap-south-1.amazonaws.com/default/AWSToUSR_Kiswok';
 
   const fromDateRef = useRef(null);
@@ -75,7 +76,7 @@ const Container = () => {
     };
   }, [triggerDataFetch]);
 
-  // Fetch energy data
+  // Fetch energy data for REAL-TIME ONLY (uses REALTIME_API)
   const fetchEnergyData = useCallback(async () => {
     if (isUserInteracting.current) return;
     
@@ -84,7 +85,7 @@ const Container = () => {
       setError(null);
       
       const addresses = ['40099', '40101', '40103', '40113', '40115', '40117', '40231'];
-      const response = await fetch(`${API_BASE}?address=${addresses}&last=1`);
+      const response = await fetch(`${REALTIME_API}?address=${addresses}&last=1`);
       
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`);
@@ -162,7 +163,7 @@ const Container = () => {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   };
 
-  // Fetch report data
+  // Fetch report data for REPORTS AND TRENDS (uses REPORT_API)
   const fetchReportData = useCallback(async (page = 1) => {
     try {
       setReportLoading(true);
@@ -183,7 +184,8 @@ const Container = () => {
       const fromDateTimeFormatted = encodeURIComponent(formatDateTimeForAPI(fromDateTime));
       const toDateTimeFormatted = encodeURIComponent(formatDateTimeForAPI(toDateTime));
       
-      const apiUrl = `${API_BASE}?address=${addressMap[reportConfig.tag]}&from=${fromDateTimeFormatted}&to=${toDateTimeFormatted}`;
+      // USING NEW REPORT API FOR REPORTS AND TRENDS
+      const apiUrl = `${REPORT_API}?address=${addressMap[reportConfig.tag]}&from=${fromDateTimeFormatted}&to=${toDateTimeFormatted}`;
       
       const response = await fetch(apiUrl);
       
