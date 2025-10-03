@@ -1,7 +1,8 @@
-import Body from "./Body";
+import React from 'react';
+import Container from './Container';
 
 const Index = () => {
-  return <Body />;
+  return <Container />;
 };
 
 export default Index;
