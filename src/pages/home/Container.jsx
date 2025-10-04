@@ -22,21 +22,27 @@ const Container = () => {
     toDateTime: new Date().toISOString().slice(0, 16)
   });
 
-  // API endpoints - SEPARATED FOR DIFFERENT PURPOSES
-  const REALTIME_API = 'https://lewgxoxna8.execute-api.ap-south-1.amazonaws.com/Read'; // For real-time data only
-  const REPORT_API = 'https://yv2f6ynj93.execute-api.ap-south-1.amazonaws.com/default/Report'; // For reports and trends
+  // New state for real-time trend data (last 5 readings)
+  const [realtimeTrendData, setRealtimeTrendData] = useState([]);
+  const [realtimeTrendLoading, setRealtimeTrendLoading] = useState(false);
+
+  // API endpoints
+  const API_BASE = 'https://lewgxoxna8.execute-api.ap-south-1.amazonaws.com/Read';
   const TRIGGER_API = 'https://yv2f6ynj93.execute-api.ap-south-1.amazonaws.com/default/AWSToUSR_Kiswok';
+  const REPORT_API = 'https://yv2f6ynj93.execute-api.ap-south-1.amazonaws.com/default/Report';
 
   const fromDateRef = useRef(null);
   const toDateRef = useRef(null);
   const isUserInteracting = useRef(false);
   const autoRefreshRef = useRef(null);
   const triggerRef = useRef(null);
+  const realtimeTrendRef = useRef(null);
 
   // Navigation references
   const realtimeRef = useRef(null);
   const reportsRef = useRef(null);
   const trendsRef = useRef(null);
+  const realtimeTrendSectionRef = useRef(null);
 
   // Update current time every second
   useEffect(() => {
@@ -76,7 +82,7 @@ const Container = () => {
     };
   }, [triggerDataFetch]);
 
-  // Fetch energy data for REAL-TIME ONLY (uses REALTIME_API)
+  // Fetch energy data
   const fetchEnergyData = useCallback(async () => {
     if (isUserInteracting.current) return;
     
@@ -85,7 +91,7 @@ const Container = () => {
       setError(null);
       
       const addresses = ['40099', '40101', '40103', '40113', '40115', '40117', '40231'];
-      const response = await fetch(`${REALTIME_API}?address=${addresses}&last=1`);
+      const response = await fetch(`${API_BASE}?address=${addresses}&last=1`);
       
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`);
@@ -135,7 +141,78 @@ const Container = () => {
     }
   }, []);
 
-  // Auto-refresh every 5 seconds
+  // Fetch real-time trend data (last 5 readings for all parameters)
+  const fetchRealtimeTrendData = useCallback(async () => {
+    try {
+      // Don't show loading state after initial load to prevent flicker
+      if (realtimeTrendData.length === 0) {
+        setRealtimeTrendLoading(true);
+      }
+      
+      const addresses = ['40099', '40101', '40103', '40113', '40115', '40117', '40231'];
+      const response = await fetch(`${API_BASE}?address=${addresses}&last=5`);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      const addressMap = {
+        '40099': { name: 'voltageR', displayName: 'R Phase Voltage', unit: 'V', color: '#ef4444' },
+        '40101': { name: 'voltageY', displayName: 'Y Phase Voltage', unit: 'V', color: '#eab308' },
+        '40103': { name: 'voltageB', displayName: 'B Phase Voltage', unit: 'V', color: '#3b82f6' },
+        '40113': { name: 'currentR', displayName: 'R Phase Current', unit: 'A', color: '#ef4444' },
+        '40115': { name: 'currentY', displayName: 'Y Phase Current', unit: 'A', color: '#eab308' },
+        '40117': { name: 'currentB', displayName: 'B Phase Current', unit: 'A', color: '#3b82f6' },
+        '40231': { name: 'kwh', displayName: 'Energy', unit: 'kWh', color: '#10b981' }
+      };
+      
+      // Group data by timestamp
+      const timestampMap = {};
+      
+      data.forEach(item => {
+        const paramInfo = addressMap[item.address];
+        if (paramInfo) {
+          const timestamp = item.timestamp;
+          if (!timestampMap[timestamp]) {
+            timestampMap[timestamp] = {
+              timestamp: timestamp,
+              shortTime: new Date(timestamp).toLocaleString('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+              }),
+              dateTime: new Date(timestamp)
+            };
+          }
+          timestampMap[timestamp][paramInfo.name] = parseFloat(item.value) || 0;
+        }
+      });
+      
+      // Convert to array and sort by time
+      const formattedData = Object.values(timestampMap).sort((a, b) => a.dateTime - b.dateTime);
+      
+      // Only update if data has actually changed to prevent unnecessary re-renders
+      const dataChanged = JSON.stringify(formattedData) !== JSON.stringify(realtimeTrendData);
+      if (dataChanged) {
+        setRealtimeTrendData(formattedData);
+      }
+      
+    } catch (err) {
+      console.error('Real-time trend data fetch failed:', err);
+    } finally {
+      if (realtimeTrendData.length === 0) {
+        setRealtimeTrendLoading(false);
+      }
+    }
+  }, [realtimeTrendData]);
+
+  // Auto-refresh every 5 seconds for main data
   useEffect(() => {
     const startAutoRefresh = () => {
       fetchEnergyData();
@@ -151,8 +228,20 @@ const Container = () => {
     };
   }, [fetchEnergyData]);
 
-  // Format datetime for API
-  const formatDateTimeForAPI = (datetimeLocal) => {
+  // Auto-refresh every 3 seconds for real-time trend
+  useEffect(() => {
+    fetchRealtimeTrendData();
+    realtimeTrendRef.current = setInterval(fetchRealtimeTrendData, 3000);
+    
+    return () => {
+      if (realtimeTrendRef.current) {
+        clearInterval(realtimeTrendRef.current);
+      }
+    };
+  }, [fetchRealtimeTrendData]);
+
+  // Format datetime for Report API (YYYY-MM-DD HH:MM:SS)
+  const formatDateTimeForReportAPI = (datetimeLocal) => {
     const date = new Date(datetimeLocal);
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -163,13 +252,13 @@ const Container = () => {
     return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
   };
 
-  // Fetch report data for REPORTS AND TRENDS (uses REPORT_API)
+  // Fetch report data using the new Report API
   const fetchReportData = useCallback(async (page = 1) => {
     try {
       setReportLoading(true);
       
       const addressMap = {
-        'voltageR': '40099',
+        'voltageR': '40101',
         'voltageY': '40101', 
         'voltageB': '40103',
         'currentR': '40113',
@@ -181,10 +270,9 @@ const Container = () => {
       const fromDateTime = fromDateRef.current ? fromDateRef.current.value : reportConfig.fromDateTime;
       const toDateTime = toDateRef.current ? toDateRef.current.value : reportConfig.toDateTime;
       
-      const fromDateTimeFormatted = encodeURIComponent(formatDateTimeForAPI(fromDateTime));
-      const toDateTimeFormatted = encodeURIComponent(formatDateTimeForAPI(toDateTime));
+      const fromDateTimeFormatted = encodeURIComponent(formatDateTimeForReportAPI(fromDateTime));
+      const toDateTimeFormatted = encodeURIComponent(formatDateTimeForReportAPI(toDateTime));
       
-      // USING NEW REPORT API FOR REPORTS AND TRENDS
       const apiUrl = `${REPORT_API}?address=${addressMap[reportConfig.tag]}&from=${fromDateTimeFormatted}&to=${toDateTimeFormatted}`;
       
       const response = await fetch(apiUrl);
@@ -309,7 +397,10 @@ const Container = () => {
       realtimeRef={realtimeRef}
       reportsRef={reportsRef}
       trendsRef={trendsRef}
+      realtimeTrendSectionRef={realtimeTrendSectionRef}
       fetchReportData={fetchReportData}
+      realtimeTrendData={realtimeTrendData}
+      realtimeTrendLoading={realtimeTrendLoading}
     />
   );
 };
