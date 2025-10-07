@@ -8,6 +8,11 @@ const Container = () => {
     voltageR: null, voltageY: null, voltageB: null,
     currentR: null, currentY: null, currentB: null, kwh: null
   });
+  const [thresholdEditingState, setThresholdEditingState] = useState({
+  I_RPhase: { isEditing: false, inputValue: '' },
+  I_YPhase: { isEditing: false, inputValue: '' },
+  I_BPhase: { isEditing: false, inputValue: '' }
+});
   
   const [deviceOnline, setDeviceOnline] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
@@ -22,14 +27,22 @@ const Container = () => {
     toDateTime: new Date().toISOString().slice(0, 16)
   });
 
-  // New state for real-time trend data (last 5 readings)
   const [realtimeTrendData, setRealtimeTrendData] = useState([]);
   const [realtimeTrendLoading, setRealtimeTrendLoading] = useState(false);
+  
+  const [thresholdData, setThresholdData] = useState({
+    I_RPhase: null,
+    I_YPhase: null,
+    I_BPhase: null
+  });
+  const [thresholdLoading, setThresholdLoading] = useState(false);
+  const [thresholdError, setThresholdError] = useState(null);
 
-  // API endpoints
-  const API_BASE = 'https://lewgxoxna8.execute-api.ap-south-1.amazonaws.com/Read';
+  // Add API endpoints
+  const THRESHOLD_API = 'https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R3';
+  const API_BASE = 'https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/';
   const TRIGGER_API = 'https://yv2f6ynj93.execute-api.ap-south-1.amazonaws.com/default/AWSToUSR_Kiswok';
-  const REPORT_API = 'https://yv2f6ynj93.execute-api.ap-south-1.amazonaws.com/default/Report';
+  const REPORT_API = 'https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R2';
 
   const fromDateRef = useRef(null);
   const toDateRef = useRef(null);
@@ -37,6 +50,7 @@ const Container = () => {
   const autoRefreshRef = useRef(null);
   const triggerRef = useRef(null);
   const realtimeTrendRef = useRef(null);
+  const thresholdRef = useRef(null);
 
   // Navigation references
   const realtimeRef = useRef(null);
@@ -142,75 +156,67 @@ const Container = () => {
   }, []);
 
   // Fetch real-time trend data (last 5 readings for all parameters)
-  const fetchRealtimeTrendData = useCallback(async () => {
-    try {
-      // Don't show loading state after initial load to prevent flicker
-      if (realtimeTrendData.length === 0) {
-        setRealtimeTrendLoading(true);
-      }
-      
-      const addresses = ['40099', '40101', '40103', '40113', '40115', '40117', '40231'];
-      const response = await fetch(`${API_BASE}?address=${addresses}&last=5`);
-      
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      const addressMap = {
-        '40099': { name: 'voltageR', displayName: 'R Phase Voltage', unit: 'V', color: '#ef4444' },
-        '40101': { name: 'voltageY', displayName: 'Y Phase Voltage', unit: 'V', color: '#eab308' },
-        '40103': { name: 'voltageB', displayName: 'B Phase Voltage', unit: 'V', color: '#3b82f6' },
-        '40113': { name: 'currentR', displayName: 'R Phase Current', unit: 'A', color: '#ef4444' },
-        '40115': { name: 'currentY', displayName: 'Y Phase Current', unit: 'A', color: '#eab308' },
-        '40117': { name: 'currentB', displayName: 'B Phase Current', unit: 'A', color: '#3b82f6' },
-        '40231': { name: 'kwh', displayName: 'Energy', unit: 'kWh', color: '#10b981' }
-      };
-      
-      // Group data by timestamp
-      const timestampMap = {};
-      
-      data.forEach(item => {
-        const paramInfo = addressMap[item.address];
-        if (paramInfo) {
-          const timestamp = item.timestamp;
-          if (!timestampMap[timestamp]) {
-            timestampMap[timestamp] = {
-              timestamp: timestamp,
-              shortTime: new Date(timestamp).toLocaleString('en-IN', {
-                timeZone: 'Asia/Kolkata',
-                month: 'short',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
-              }),
-              dateTime: new Date(timestamp)
-            };
-          }
-          timestampMap[timestamp][paramInfo.name] = parseFloat(item.value) || 0;
-        }
-      });
-      
-      // Convert to array and sort by time
-      const formattedData = Object.values(timestampMap).sort((a, b) => a.dateTime - b.dateTime);
-      
-      // Only update if data has actually changed to prevent unnecessary re-renders
-      const dataChanged = JSON.stringify(formattedData) !== JSON.stringify(realtimeTrendData);
-      if (dataChanged) {
-        setRealtimeTrendData(formattedData);
-      }
-      
-    } catch (err) {
-      console.error('Real-time trend data fetch failed:', err);
-    } finally {
-      if (realtimeTrendData.length === 0) {
-        setRealtimeTrendLoading(false);
-      }
+ const fetchRealtimeTrendData = useCallback(async () => {
+  try {
+    setRealtimeTrendLoading(true);
+    
+    const addresses = ['40099', '40101', '40103', '40113', '40115', '40117', '40231'];
+    const response = await fetch(`${API_BASE}?address=${addresses}&last=5`);
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`);
     }
-  }, [realtimeTrendData]);
+    
+    const data = await response.json();
+    
+    const addressMap = {
+      '40099': { name: 'voltageR', displayName: 'R Phase Voltage', unit: 'V', color: '#ef4444' },
+      '40101': { name: 'voltageY', displayName: 'Y Phase Voltage', unit: 'V', color: '#eab308' },
+      '40103': { name: 'voltageB', displayName: 'B Phase Voltage', unit: 'V', color: '#3b82f6' },
+      '40113': { name: 'currentR', displayName: 'R Phase Current', unit: 'A', color: '#ef4444' },
+      '40115': { name: 'currentY', displayName: 'Y Phase Current', unit: 'A', color: '#eab308' },
+      '40117': { name: 'currentB', displayName: 'B Phase Current', unit: 'A', color: '#3b82f6' },
+      '40231': { name: 'kwh', displayName: 'Energy', unit: 'kWh', color: '#10b981' }
+    };
+    
+    const timestampMap = {};
+    
+    data.forEach(item => {
+      const paramInfo = addressMap[item.address];
+      if (paramInfo) {
+        const timestamp = item.timestamp;
+        if (!timestampMap[timestamp]) {
+          timestampMap[timestamp] = {
+            timestamp: timestamp,
+            shortTime: new Date(timestamp).toLocaleString('en-IN', {
+              timeZone: 'Asia/Kolkata',
+              month: 'short',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true
+            }),
+            dateTime: new Date(timestamp)
+          };
+        }
+        timestampMap[timestamp][paramInfo.name] = parseFloat(item.value) || 0;
+      }
+    });
+    
+    const formattedData = Object.values(timestampMap).sort((a, b) => a.dateTime - b.dateTime);
+    
+    setRealtimeTrendData(prevData => {
+      const dataChanged = JSON.stringify(formattedData) !== JSON.stringify(prevData);
+      return dataChanged ? formattedData : prevData;
+    });
+    
+  } catch (err) {
+    console.error('Real-time trend data fetch failed:', err);
+  } finally {
+    setRealtimeTrendLoading(false);
+  }
+}, [API_BASE]);
 
   // Auto-refresh every 5 seconds for main data
   useEffect(() => {
@@ -258,7 +264,7 @@ const Container = () => {
       setReportLoading(true);
       
       const addressMap = {
-        'voltageR': '40101',
+        'voltageR': '40099',
         'voltageY': '40101', 
         'voltageB': '40103',
         'currentR': '40113',
@@ -321,6 +327,79 @@ const Container = () => {
     }
   }, [reportConfig.tag]);
 
+  // Fetch threshold values - REMOVED from dependency array to prevent auto-refresh
+  const fetchThresholdData = useCallback(async () => {
+    try {
+      setThresholdLoading(true);
+      const phases = ['I_RPhase', 'I_YPhase', 'I_BPhase'];
+      
+      const promises = phases.map(async (phase) => {
+        const response = await fetch(`${THRESHOLD_API}?id=${phase}`);
+        if (!response.ok) throw new Error(`Failed to fetch ${phase}`);
+        const data = await response.json();
+        return { phase, value: parseFloat(data.value) || 0 };
+      });
+      
+      const results = await Promise.all(promises);
+      const newThresholdData = {};
+      results.forEach(({ phase, value }) => {
+        newThresholdData[phase] = value;
+      });
+      
+      setThresholdData(newThresholdData);
+      setThresholdError(null);
+    } catch (err) {
+      console.error('Threshold fetch failed:', err);
+      setThresholdError(err.message);
+    } finally {
+      setThresholdLoading(false);
+    }
+  }, []); // EMPTY dependency array - no auto-refresh
+
+  // Update threshold value
+  const updateThreshold = useCallback(async (id, value) => {
+  try {
+    setThresholdLoading(true);
+    const response = await fetch(THRESHOLD_API, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id, value: value.toString() })
+    });
+    
+    if (!response.ok) throw new Error('Failed to update threshold');
+    
+    // Manually fetch updated threshold after update
+    const phases = ['I_RPhase', 'I_YPhase', 'I_BPhase'];
+    const promises = phases.map(async (phase) => {
+      const response = await fetch(`${THRESHOLD_API}?id=${phase}`);
+      if (!response.ok) throw new Error(`Failed to fetch ${phase}`);
+      const data = await response.json();
+      return { phase, value: parseFloat(data.value) || 0 };
+    });
+    
+    const results = await Promise.all(promises);
+    const newThresholdData = {};
+    results.forEach(({ phase, value }) => {
+      newThresholdData[phase] = value;
+    });
+    
+    setThresholdData(newThresholdData);
+    setThresholdError(null);
+  } catch (err) {
+    console.error('Threshold update failed:', err);
+    setThresholdError(err.message);
+  } finally {
+    setThresholdLoading(false);
+  }
+}, [THRESHOLD_API]);
+
+  // Fetch threshold data ONLY on initial component mount
+  useEffect(() => {
+    fetchThresholdData();
+  }, []); // EMPTY dependency array - runs only once on mount
+
   // Handle datetime input events
   const handleDateTimeEvents = (ref, isFromDate = true) => {
     if (!ref.current) return;
@@ -333,7 +412,7 @@ const Container = () => {
         clearInterval(autoRefreshRef.current);
       }
     };
-    
+
     const handleBlur = () => {
       setTimeout(() => {
         isUserInteracting.current = false;
@@ -374,33 +453,49 @@ const Container = () => {
       if (cleanup2) cleanup2();
     };
   }, []);
-
+  
+  // Memoize threshold-related props to prevent unnecessary re-renders
+const thresholdProps = React.useMemo(() => ({
+  thresholdData,
+  thresholdLoading,
+  thresholdError,
+  updateThreshold,
+  fetchThresholdData
+}), [thresholdData, thresholdLoading, thresholdError, updateThreshold, fetchThresholdData]);
   // Pass all props to Body component
   return (
     <Body
-      darkMode={darkMode}
-      setDarkMode={setDarkMode}
-      sidebarOpen={sidebarOpen}
-      setSidebarOpen={setSidebarOpen}
-      energyData={energyData}
-      deviceOnline={deviceOnline}
-      lastUpdate={lastUpdate}
-      isLoading={isLoading}
-      error={error}
-      currentTime={currentTime}
-      reportData={reportData}
-      reportLoading={reportLoading}
-      reportConfig={reportConfig}
-      setReportConfig={setReportConfig}
-      fromDateRef={fromDateRef}
-      toDateRef={toDateRef}
-      realtimeRef={realtimeRef}
-      reportsRef={reportsRef}
-      trendsRef={trendsRef}
-      realtimeTrendSectionRef={realtimeTrendSectionRef}
-      fetchReportData={fetchReportData}
-      realtimeTrendData={realtimeTrendData}
-      realtimeTrendLoading={realtimeTrendLoading}
+    darkMode={darkMode}
+    setDarkMode={setDarkMode}
+    sidebarOpen={sidebarOpen}
+    setSidebarOpen={setSidebarOpen}
+    energyData={energyData}
+    deviceOnline={deviceOnline}
+    lastUpdate={lastUpdate}
+    isLoading={isLoading}
+    error={error}
+    currentTime={currentTime}
+    reportData={reportData}
+    reportLoading={reportLoading}
+    reportConfig={reportConfig}
+    setReportConfig={setReportConfig}
+    fromDateRef={fromDateRef}
+    toDateRef={toDateRef}
+    realtimeRef={realtimeRef}
+    reportsRef={reportsRef}
+    trendsRef={trendsRef}
+    realtimeTrendSectionRef={realtimeTrendSectionRef}
+    fetchReportData={fetchReportData}
+    realtimeTrendData={realtimeTrendData}
+    thresholdRef={thresholdRef}
+    thresholdData={thresholdData}
+    thresholdLoading={thresholdLoading}
+    thresholdError={thresholdError}
+    updateThreshold={updateThreshold}
+    fetchThresholdData={fetchThresholdData}
+    realtimeTrendLoading={realtimeTrendLoading}
+    thresholdEditingState={thresholdEditingState}
+    setThresholdEditingState={setThresholdEditingState}
     />
   );
 };
