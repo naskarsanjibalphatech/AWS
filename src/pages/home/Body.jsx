@@ -58,33 +58,7 @@ const Body = ({
   };
   //
   // NEW COMPONENT - Add this
-const ThresholdSection = React.memo(({ 
-  thresholdData, 
-  thresholdLoading, 
-  thresholdError, 
-  updateThreshold, 
-  darkMode 
-}) => {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-      <ThresholdSection
-  thresholdData={thresholdData}
-  thresholdLoading={thresholdLoading}
-  thresholdError={thresholdError}
-  updateThreshold={updateThreshold}
-  darkMode={darkMode}
-/>
-    </div>
-  );
-}, (prevProps, nextProps) => {
-  return (
-    prevProps.thresholdData.I_RPhase === nextProps.thresholdData.I_RPhase &&
-    prevProps.thresholdData.I_YPhase === nextProps.thresholdData.I_YPhase &&
-    prevProps.thresholdData.I_BPhase === nextProps.thresholdData.I_BPhase &&
-    prevProps.thresholdLoading === nextProps.thresholdLoading &&
-    prevProps.darkMode === nextProps.darkMode
-  );
-});
+
   //
   const formatDateTime = (timestamp) => {
     if (!timestamp) return 'No data';
@@ -148,7 +122,7 @@ const ThresholdSection = React.memo(({
   };
   // Threshold Card Component
 // Threshold Card Component - NO internal state, all state from parent
-const ThresholdCard = ({ 
+const ThresholdCard = React.memo(({ 
   phase, 
   phaseId, 
   color, 
@@ -277,7 +251,15 @@ const ThresholdCard = ({
       </div>
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.currentValue === nextProps.currentValue &&
+    prevProps.thresholdLoading === nextProps.thresholdLoading &&
+    prevProps.editingState.isEditing === nextProps.editingState.isEditing &&
+    prevProps.editingState.inputValue === nextProps.editingState.inputValue &&
+    prevProps.darkMode === nextProps.darkMode
+  );
+});
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
@@ -789,7 +771,8 @@ const ThresholdCard = ({
                 <div style={{width: '100%', height: '300px'}}>
                   <ResponsiveContainer>
                     <LineChart 
-                      data={realtimeTrendData} 
+                      data={realtimeTrendData}
+                      isAnimationActive={false} 
                       margin={{ top: 5, right: 10, left: 0, bottom: 60 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#f0f0f0'} />
@@ -822,9 +805,9 @@ const ThresholdCard = ({
                         wrapperStyle={{ paddingTop: '10px', fontSize: '11px' }}
                         iconType="line"
                       />
-                      <Line type="monotone" dataKey="voltageR" stroke="#ef4444" strokeWidth={2} name="R Phase" dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="voltageY" stroke="#eab308" strokeWidth={2} name="Y Phase" dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="voltageB" stroke="#3b82f6" strokeWidth={2} name="B Phase" dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="voltageR" stroke="#ef4444" strokeWidth={2} name="R Phase" dot={{ r: 3 }} isAnimationActive={false} animationDuration={0} />
+                      <Line type="monotone" dataKey="voltageY" stroke="#eab308" strokeWidth={2} name="Y Phase" dot={{ r: 3 }} isAnimationActive={false} animationDuration={0} />
+                      <Line type="monotone" dataKey="voltageB" stroke="#3b82f6" strokeWidth={2} name="B Phase" dot={{ r: 3 }} isAnimationActive={false} animationDuration={0} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -860,7 +843,8 @@ const ThresholdCard = ({
                 <div style={{width: '100%', height: '300px'}}>
                   <ResponsiveContainer>
                     <LineChart 
-                      data={realtimeTrendData} 
+                      data={realtimeTrendData}
+                      isAnimationActive={false} 
                       margin={{ top: 5, right: 10, left: 0, bottom: 60 }}
                     >
                       <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#f0f0f0'} />
@@ -893,9 +877,9 @@ const ThresholdCard = ({
                         wrapperStyle={{ paddingTop: '10px', fontSize: '11px' }}
                         iconType="line"
                       />
-                      <Line type="monotone" dataKey="currentR" stroke="#ef4444" strokeWidth={2} name="R Phase" dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="currentY" stroke="#eab308" strokeWidth={2} name="Y Phase" dot={{ r: 3 }} />
-                      <Line type="monotone" dataKey="currentB" stroke="#3b82f6" strokeWidth={2} name="B Phase" dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="currentR" stroke="#ef4444" strokeWidth={2} name="R Phase" dot={{ r: 3 }} isAnimationActive={false} animationDuration={0} />
+                      <Line type="monotone" dataKey="currentY" stroke="#eab308" strokeWidth={2} name="Y Phase" dot={{ r: 3 }} isAnimationActive={false} animationDuration={0} />
+                      <Line type="monotone" dataKey="currentB" stroke="#3b82f6" strokeWidth={2} name="B Phase" dot={{ r: 3 }} isAnimationActive={false} animationDuration={0} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -964,7 +948,7 @@ const ThresholdCard = ({
                         wrapperStyle={{ paddingTop: '10px', fontSize: '11px' }}
                         iconType="line"
                       />
-                      <Line type="monotone" dataKey="kwh" stroke="#10b981" strokeWidth={2} name="Total kWh" dot={{ r: 3 }} />
+                      <Line type="monotone" dataKey="kwh" stroke="#10b981" strokeWidth={2} name="Total kWh" dot={{ r: 3 }} isAnimationActive={false} animationDuration={0} />
                     </LineChart>
                   </ResponsiveContainer>
                 </div>
@@ -1203,7 +1187,8 @@ const ThresholdCard = ({
             <div style={{width: '100%', height: '400px'}}>
               <ResponsiveContainer>
                 <LineChart 
-                  data={getChartData()} 
+                  data={getChartData()}
+                  isAnimationActive={false} 
                   margin={{ top: 5, right: 30, left: 20, bottom: 60 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke={darkMode ? '#374151' : '#f0f0f0'} />
@@ -1239,6 +1224,8 @@ const ThresholdCard = ({
                     stroke={getChartColor(reportConfig.tag)}
                     strokeWidth={3}
                     dot={{ r: 4, strokeWidth: 2 }}
+                    isAnimationActive={false}  
+                    animationDuration={0}      
                     activeDot={{ r: 6, stroke: getChartColor(reportConfig.tag), strokeWidth: 2 }}
                     name={`${getTagDisplayName(reportConfig.tag)} (${getTagUnit(reportConfig.tag)})`}
                   />

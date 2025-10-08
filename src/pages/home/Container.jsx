@@ -455,13 +455,6 @@ const Container = () => {
   }, []);
   
   // Memoize threshold-related props to prevent unnecessary re-renders
-const thresholdProps = React.useMemo(() => ({
-  thresholdData,
-  thresholdLoading,
-  thresholdError,
-  updateThreshold,
-  fetchThresholdData
-}), [thresholdData, thresholdLoading, thresholdError, updateThreshold, fetchThresholdData]);
   // Pass all props to Body component
   return (
     <Body
