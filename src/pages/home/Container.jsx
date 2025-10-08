@@ -17,6 +17,7 @@ const Container = () => {
   const [deviceOnline, setDeviceOnline] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [toast, setToast] = useState(null); 
   const [error, setError] = useState(null);
   const [currentTime, setCurrentTime] = useState(new Date());
   const [reportData, setReportData] = useState([]);
@@ -247,120 +248,94 @@ const Container = () => {
   }, [fetchRealtimeTrendData]);
 
   // Format datetime for Report API (YYYY-MM-DD HH:MM:SS)
-  const formatDateTimeForReportAPI = (datetimeLocal) => {
-    const date = new Date(datetimeLocal);
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const hours = String(date.getHours()).padStart(2, '0');
-    const minutes = String(date.getMinutes()).padStart(2, '0');
-    const seconds = String(date.getSeconds()).padStart(2, '0');
-    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-  };
+// Format datetime for Report API (YYYY-MM-DD HH:MM:SS)
+const formatDateTimeForReportAPI = (datetimeLocal) => {
+  const date = new Date(datetimeLocal);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const seconds = String(date.getSeconds()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
 
-  // Fetch report data using the new Report API
-  const fetchReportData = useCallback(async (page = 1) => {
-    try {
-      setReportLoading(true);
-      
-      const addressMap = {
-        'voltageR': '40099',
-        'voltageY': '40101', 
-        'voltageB': '40103',
-        'currentR': '40113',
-        'currentY': '40115',
-        'currentB': '40117',
-        'kwh': '40231'
-      };
-      
-      const fromDateTime = fromDateRef.current ? fromDateRef.current.value : reportConfig.fromDateTime;
-      const toDateTime = toDateRef.current ? toDateRef.current.value : reportConfig.toDateTime;
-      
-      const fromDateTimeFormatted = encodeURIComponent(formatDateTimeForReportAPI(fromDateTime));
-      const toDateTimeFormatted = encodeURIComponent(formatDateTimeForReportAPI(toDateTime));
-      
-      const apiUrl = `${REPORT_API}?address=${addressMap[reportConfig.tag]}&from=${fromDateTimeFormatted}&to=${toDateTimeFormatted}`;
-      
-      const response = await fetch(apiUrl);
-      
-      if (!response.ok) {
-        throw new Error(`API Error: ${response.status} - ${response.statusText}`);
-      }
-      
-      const data = await response.json();
-      
-      if (!Array.isArray(data)) {
-        throw new Error('Invalid API response format');
-      }
-      
-      const formattedData = data.map(item => ({
-        timestamp: new Date(item.timestamp).toLocaleString('en-IN', {
-          timeZone: 'Asia/Kolkata',
-          hour12: true,
-          year: 'numeric',
-          month: '2-digit',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit'
-        }),
-        shortTime: new Date(item.timestamp).toLocaleString('en-IN', {
-          timeZone: 'Asia/Kolkata',
-          month: 'short',
-          day: '2-digit',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: true
-        }),
-        value: parseFloat(item.value) || 0,
-        dateTime: new Date(item.timestamp)
-      })).sort((a, b) => a.dateTime - b.dateTime);
-      
-      setReportData(formattedData);
-      
-    } catch (err) {
-      console.error('Report data fetch failed:', err);
-      setError(`Report Error: ${err.message}`);
-      setReportData([]);
-    } finally {
-      setReportLoading(false);
+// Fetch report data using the new Report API
+const fetchReportData = useCallback(async (page = 1) => {
+  try {
+    setReportLoading(true);
+    
+    const addressMap = {
+      'voltageR': '40099',
+      'voltageY': '40101', 
+      'voltageB': '40103',
+      'currentR': '40113',
+      'currentY': '40115',
+      'currentB': '40117',
+      'kwh': '40231'
+    };
+    
+    const fromDateTime = fromDateRef.current ? fromDateRef.current.value : reportConfig.fromDateTime;
+    const toDateTime = toDateRef.current ? toDateRef.current.value : reportConfig.toDateTime;
+    
+    const fromDateTimeFormatted = encodeURIComponent(formatDateTimeForReportAPI(fromDateTime));
+    const toDateTimeFormatted = encodeURIComponent(formatDateTimeForReportAPI(toDateTime));
+    
+    const apiUrl = `${REPORT_API}?address=${addressMap[reportConfig.tag]}&from=${fromDateTimeFormatted}&to=${toDateTimeFormatted}`;
+    
+    const response = await fetch(apiUrl);
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status} - ${response.statusText}`);
     }
-  }, [reportConfig.tag]);
-
-  // Fetch threshold values - REMOVED from dependency array to prevent auto-refresh
-  const fetchThresholdData = useCallback(async () => {
-    try {
-      setThresholdLoading(true);
-      const phases = ['I_RPhase', 'I_YPhase', 'I_BPhase'];
-      
-      const promises = phases.map(async (phase) => {
-        const response = await fetch(`${THRESHOLD_API}?id=${phase}`);
-        if (!response.ok) throw new Error(`Failed to fetch ${phase}`);
-        const data = await response.json();
-        return { phase, value: parseFloat(data.value) || 0 };
-      });
-      
-      const results = await Promise.all(promises);
-      const newThresholdData = {};
-      results.forEach(({ phase, value }) => {
-        newThresholdData[phase] = value;
-      });
-      
-      setThresholdData(newThresholdData);
-      setThresholdError(null);
-    } catch (err) {
-      console.error('Threshold fetch failed:', err);
-      setThresholdError(err.message);
-    } finally {
-      setThresholdLoading(false);
+    
+    const data = await response.json();
+    
+    if (!Array.isArray(data)) {
+      throw new Error('Invalid API response format');
     }
-  }, []); // EMPTY dependency array - no auto-refresh
+    
+    const formattedData = data.map(item => ({
+      timestamp: new Date(item.timestamp).toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        hour12: true,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      }),
+      shortTime: new Date(item.timestamp).toLocaleString('en-IN', {
+        timeZone: 'Asia/Kolkata',
+        month: 'short',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      }),
+      value: parseFloat(item.value) || 0,
+      dateTime: new Date(item.timestamp)
+    })).sort((a, b) => a.dateTime - b.dateTime);
+    
+    setReportData(formattedData);
+    
+  } catch (err) {
+    console.error('Report data fetch failed:', err);
+    setError(`Report Error: ${err.message}`);
+    setReportData([]);
+  } finally {
+    setReportLoading(false);
+  }
+}, [reportConfig.tag]);
 
-  // Update threshold value
-  const updateThreshold = useCallback(async (id, value) => {
+// Update threshold value
+const updateThreshold = useCallback(async (id, value) => {
   try {
     setThresholdLoading(true);
-    const response = await fetch(THRESHOLD_API, {
+    
+    // STEP 1: Update threshold value in database (R3 API)
+    const updateResponse = await fetch(THRESHOLD_API, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -368,9 +343,24 @@ const Container = () => {
       body: JSON.stringify({ id, value: value.toString() })
     });
     
-    if (!response.ok) throw new Error('Failed to update threshold');
+    if (!updateResponse.ok) throw new Error('Failed to update threshold');
     
-    // Manually fetch updated threshold after update
+    // STEP 2: Call R2 API to trigger alert checking Lambda
+// STEP 2: Call R2 API to trigger alert checking Lambda (just trigger, no params needed)
+try {
+  const alertResponse = await fetch('https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R2', {
+    method: 'PUT'
+  });
+  
+  if (!alertResponse.ok) {
+    console.warn('Alert check trigger failed, but threshold was updated');
+  }
+} catch (alertErr) {
+  console.warn('Alert API trigger failed:', alertErr.message);
+  // Don't throw error - threshold was already updated successfully
+}
+    
+    // STEP 3: Fetch updated threshold values to refresh display
     const phases = ['I_RPhase', 'I_YPhase', 'I_BPhase'];
     const promises = phases.map(async (phase) => {
       const response = await fetch(`${THRESHOLD_API}?id=${phase}`);
@@ -387,8 +377,50 @@ const Container = () => {
     
     setThresholdData(newThresholdData);
     setThresholdError(null);
+    
+    // STEP 4: Show success notification popup
+    setToast({
+      message: `Threshold for ${id} updated successfully to ${value} A`,
+      type: 'success'
+    });
+    
   } catch (err) {
     console.error('Threshold update failed:', err);
+    setThresholdError(err.message);
+    
+    // Show error notification popup
+    setToast({
+      message: `Failed to update threshold: ${err.message}`,
+      type: 'error'
+    });
+  } finally {
+    setThresholdLoading(false);
+  }
+}, [THRESHOLD_API]);
+
+// Fetch threshold values - REMOVED from dependency array to prevent auto-refresh
+const fetchThresholdData = useCallback(async () => {
+  try {
+    setThresholdLoading(true);
+    const phases = ['I_RPhase', 'I_YPhase', 'I_BPhase'];
+    
+    const promises = phases.map(async (phase) => {
+      const response = await fetch(`${THRESHOLD_API}?id=${phase}`);
+      if (!response.ok) throw new Error(`Failed to fetch ${phase}`);
+      const data = await response.json();
+      return { phase, value: parseFloat(data.value) || 0 };
+    });
+    
+    const results = await Promise.all(promises);
+    const newThresholdData = {};
+    results.forEach(({ phase, value }) => {
+      newThresholdData[phase] = value;
+    });
+    
+    setThresholdData(newThresholdData);
+    setThresholdError(null);
+  } catch (err) {
+    console.error('Threshold fetch failed:', err);
     setThresholdError(err.message);
   } finally {
     setThresholdLoading(false);
@@ -489,6 +521,8 @@ const Container = () => {
     realtimeTrendLoading={realtimeTrendLoading}
     thresholdEditingState={thresholdEditingState}
     setThresholdEditingState={setThresholdEditingState}
+    toast={toast}              // ← ADD THIS LINE
+    setToast={setToast}  
     />
   );
 };

@@ -40,6 +40,8 @@ const Body = ({
   realtimeTrendSectionRef,
   fetchReportData,
   realtimeTrendData,
+  toast={toast},             // ← ADD THIS
+  setToast={setToast},
   realtimeTrendLoading
 }) => {
 
@@ -98,16 +100,7 @@ const Body = ({
               >
                 Real Time Data
               </button>
-              <button
-                onClick={() => scrollToSection(thresholdRef)}
-                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
-                  darkMode 
-                    ? 'text-gray-300 hover:text-white' 
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                Set Threshold
-              </button>
+              
               <button
                 onClick={() => scrollToSection(realtimeTrendSectionRef)}
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -117,6 +110,16 @@ const Body = ({
                 }`}
               >
                 Live Trends
+              </button>
+              <button
+                onClick={() => scrollToSection(thresholdRef)}
+                className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                  darkMode 
+                    ? 'text-gray-300 hover:text-white' 
+                    : 'text-gray-600 hover:text-gray-900'
+                }`}
+              >
+                Set Threshold
               </button>
               <button
                 onClick={() => scrollToSection(reportsRef)}
@@ -296,6 +299,14 @@ const Body = ({
           energyData={energyData}
         />
 
+        {/* Live Trends Section */}
+        <LiveTrends 
+          realtimeTrendSectionRef={realtimeTrendSectionRef}
+          darkMode={darkMode}
+          realtimeTrendData={realtimeTrendData}
+          realtimeTrendLoading={realtimeTrendLoading}
+        />
+
         {/* Threshold Section */}
         <Threshold 
           thresholdRef={thresholdRef}
@@ -306,14 +317,8 @@ const Body = ({
           updateThreshold={updateThreshold}
           thresholdEditingState={thresholdEditingState}
           setThresholdEditingState={setThresholdEditingState}
-        />
-
-        {/* Live Trends Section */}
-        <LiveTrends 
-          realtimeTrendSectionRef={realtimeTrendSectionRef}
-          darkMode={darkMode}
-          realtimeTrendData={realtimeTrendData}
-          realtimeTrendLoading={realtimeTrendLoading}
+          toast={toast}              // ← ADD THIS
+          setToast={setToast} 
         />
 
         {/* Historical Report & Trends Section */}

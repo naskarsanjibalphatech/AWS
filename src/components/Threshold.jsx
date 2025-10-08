@@ -1,6 +1,34 @@
-import React from 'react';
-import { AlertTriangle } from 'lucide-react';
+import React, { useEffect } from 'react';
+import { AlertTriangle, CheckCircle, X } from 'lucide-react';
+// Toast Notification Component - ADD THIS ENTIRE BLOCK
+const Toast = ({ message, type = 'success', onClose, darkMode }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
 
+  const colors = {
+    success: {
+      bg: darkMode ? 'bg-green-800' : 'bg-green-500',
+      icon: <CheckCircle className="h-5 w-5" />
+    },
+    error: {
+      bg: darkMode ? 'bg-red-800' : 'bg-red-500',
+      icon: <AlertTriangle className="h-5 w-5" />
+    }
+  };
+
+  return (
+    <div className={`fixed top-4 right-4 ${colors[type].bg} text-white px-6 py-4 rounded-lg shadow-2xl flex items-center space-x-3 z-50 transform transition-all duration-500 ease-out`}>
+      {colors[type].icon}
+      <span className="font-medium">{message}</span>
+      <button onClick={onClose} className="ml-4 hover:opacity-80">
+        <X className="h-4 w-4" />
+      </button>
+    </div>
+  );
+};
+// END OF TOAST COMPONENT
 // Threshold Card Component
 const ThresholdCard = React.memo(({ 
   phase, 
@@ -44,9 +72,9 @@ const ThresholdCard = React.memo(({
     setEditingState({ isEditing: false, inputValue: '' });
   };
 
-  const handleStartEdit = () => {
-    setEditingState({ isEditing: true, inputValue: '' });
-  };
+const handleStartEdit = () => {
+  setEditingState({ isEditing: true, inputValue: currentValue?.toString() || '' });
+};
 
   const handleCancel = () => {
     setEditingState({ isEditing: false, inputValue: '' });
@@ -102,12 +130,12 @@ const ThresholdCard = React.memo(({
             />
             <div className="flex space-x-2">
               <button
-                onClick={handleUpdate}
-                disabled={thresholdLoading}
-                className={`flex-1 ${colorClasses[color].button} text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50`}
-              >
-                {thresholdLoading ? 'Updating...' : 'Update'}
-              </button>
+  onClick={handleUpdate}
+  disabled={thresholdLoading}
+  className={`flex-1 ${colorClasses[color].button} text-white px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50`}
+>
+  {thresholdLoading ? 'Updating...' : 'Set'}
+</button>
               <button
                 onClick={handleCancel}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -149,10 +177,22 @@ const Threshold = ({
   thresholdError, 
   updateThreshold,
   thresholdEditingState,
-  setThresholdEditingState
+  setThresholdEditingState,
+  toast,              // ← ADD THIS
+  setToast 
 }) => {
   return (
     <section ref={thresholdRef} className="space-y-6">
+      {/* Toast Notification - ADD THIS ENTIRE BLOCK */}
+    {toast && (
+      <Toast 
+        message={toast.message} 
+        type={toast.type} 
+        darkMode={darkMode}
+        onClose={() => setToast(null)} 
+      />
+    )}
+    {/* END OF TOAST BLOCK */}
       <div className="flex items-center space-x-3">
         <AlertTriangle className="h-6 w-6 text-orange-600" />
         <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Set Current Thresholds</h2>
