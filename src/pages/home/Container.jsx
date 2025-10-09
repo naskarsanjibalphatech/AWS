@@ -1,8 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import Body from './Body';
 
-
-const Container = () => {
+const Container = ({ children }) => {
   const [darkMode, setDarkMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [energyData, setEnergyData] = useState({
@@ -10,10 +8,10 @@ const Container = () => {
     currentR: null, currentY: null, currentB: null, kwh: null
   });
   const [thresholdEditingState, setThresholdEditingState] = useState({
-  I_RPhase: { isEditing: false, inputValue: '' },
-  I_YPhase: { isEditing: false, inputValue: '' },
-  I_BPhase: { isEditing: false, inputValue: '' }
-});
+    I_RPhase: { isEditing: false, inputValue: '' },
+    I_YPhase: { isEditing: false, inputValue: '' },
+    I_BPhase: { isEditing: false, inputValue: '' }
+  });
   
   const [deviceOnline, setDeviceOnline] = useState(false);
   const [lastUpdate, setLastUpdate] = useState(null);
@@ -29,7 +27,6 @@ const Container = () => {
     toDateTime: new Date().toISOString().slice(0, 16)
   });
 
-
   const [realtimeTrendData, setRealtimeTrendData] = useState([]);
   const [realtimeTrendLoading, setRealtimeTrendLoading] = useState(false);
   
@@ -41,19 +38,17 @@ const Container = () => {
   const [thresholdLoading, setThresholdLoading] = useState(false);
   const [thresholdError, setThresholdError] = useState(null);
 
-  // Alert Log State - NEW
+  // Alert Log State
   const [alertLogData, setAlertLogData] = useState([]);
   const [alertLogLoading, setAlertLogLoading] = useState(false);
   const [alertLogCount, setAlertLogCount] = useState(5);
-
 
   // Add API endpoints
   const THRESHOLD_API = 'https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R3';
   const API_BASE = 'https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/';
   const TRIGGER_API = 'https://yv2f6ynj93.execute-api.ap-south-1.amazonaws.com/default/AWSToUSR_Kiswok';
   const REPORT_API = 'https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R2';
-  const ALERT_LOG_API = 'https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R4'; // NEW
-
+  const ALERT_LOG_API = 'https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R4';
 
   const fromDateRef = useRef(null);
   const toDateRef = useRef(null);
@@ -63,14 +58,12 @@ const Container = () => {
   const realtimeTrendRef = useRef(null);
   const thresholdRef = useRef(null);
 
-
   // Navigation references
   const realtimeRef = useRef(null);
   const reportsRef = useRef(null);
   const trendsRef = useRef(null);
   const realtimeTrendSectionRef = useRef(null);
-  const alertLogRef = useRef(null); // NEW
-
+  const alertLogRef = useRef(null);
 
   // Update current time every second
   useEffect(() => {
@@ -79,7 +72,6 @@ const Container = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
-
 
   // Background Data Trigger Function - Runs every 3 seconds
   const triggerDataFetch = useCallback(async () => {
@@ -97,8 +89,7 @@ const Container = () => {
     } catch (err) {
       console.error('Data trigger failed:', err);
     }
-  }, []);
-
+  }, [TRIGGER_API]);
 
   // Setup Background Data Trigger Every 3 seconds
   useEffect(() => {
@@ -111,7 +102,6 @@ const Container = () => {
       }
     };
   }, [triggerDataFetch]);
-
 
   // Fetch energy data
   const fetchEnergyData = useCallback(async () => {
@@ -170,72 +160,70 @@ const Container = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
-
+  }, [API_BASE]);
 
   // Fetch real-time trend data (last 5 readings for all parameters)
- const fetchRealtimeTrendData = useCallback(async () => {
-  try {
-    setRealtimeTrendLoading(true);
-    
-    const addresses = ['40099', '40101', '40103', '40113', '40115', '40117', '40231'];
-    const response = await fetch(`${API_BASE}?address=${addresses}&last=5`);
-    
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
-    }
-    
-    const data = await response.json();
-    
-    const addressMap = {
-      '40099': { name: 'voltageR', displayName: 'R Phase Voltage', unit: 'V', color: '#ef4444' },
-      '40101': { name: 'voltageY', displayName: 'Y Phase Voltage', unit: 'V', color: '#eab308' },
-      '40103': { name: 'voltageB', displayName: 'B Phase Voltage', unit: 'V', color: '#3b82f6' },
-      '40113': { name: 'currentR', displayName: 'R Phase Current', unit: 'A', color: '#ef4444' },
-      '40115': { name: 'currentY', displayName: 'Y Phase Current', unit: 'A', color: '#eab308' },
-      '40117': { name: 'currentB', displayName: 'B Phase Current', unit: 'A', color: '#3b82f6' },
-      '40231': { name: 'kwh', displayName: 'Energy', unit: 'kWh', color: '#10b981' }
-    };
-    
-    const timestampMap = {};
-    
-    data.forEach(item => {
-      const paramInfo = addressMap[item.address];
-      if (paramInfo) {
-        const timestamp = item.timestamp;
-        if (!timestampMap[timestamp]) {
-          timestampMap[timestamp] = {
-            timestamp: timestamp,
-            shortTime: new Date(timestamp).toLocaleString('en-IN', {
-              timeZone: 'Asia/Kolkata',
-              month: 'short',
-              day: '2-digit',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: true
-            }),
-            dateTime: new Date(timestamp)
-          };
-        }
-        timestampMap[timestamp][paramInfo.name] = parseFloat(item.value) || 0;
+  const fetchRealtimeTrendData = useCallback(async () => {
+    try {
+      setRealtimeTrendLoading(true);
+      
+      const addresses = ['40099', '40101', '40103', '40113', '40115', '40117', '40231'];
+      const response = await fetch(`${API_BASE}?address=${addresses}&last=5`);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
       }
-    });
-    
-    const formattedData = Object.values(timestampMap).sort((a, b) => a.dateTime - b.dateTime);
-    
-    setRealtimeTrendData(prevData => {
-      const dataChanged = JSON.stringify(formattedData) !== JSON.stringify(prevData);
-      return dataChanged ? formattedData : prevData;
-    });
-    
-  } catch (err) {
-    console.error('Real-time trend data fetch failed:', err);
-  } finally {
-    setRealtimeTrendLoading(false);
-  }
-}, [API_BASE]);
-
+      
+      const data = await response.json();
+      
+      const addressMap = {
+        '40099': { name: 'voltageR', displayName: 'R Phase Voltage', unit: 'V', color: '#ef4444' },
+        '40101': { name: 'voltageY', displayName: 'Y Phase Voltage', unit: 'V', color: '#eab308' },
+        '40103': { name: 'voltageB', displayName: 'B Phase Voltage', unit: 'V', color: '#3b82f6' },
+        '40113': { name: 'currentR', displayName: 'R Phase Current', unit: 'A', color: '#ef4444' },
+        '40115': { name: 'currentY', displayName: 'Y Phase Current', unit: 'A', color: '#eab308' },
+        '40117': { name: 'currentB', displayName: 'B Phase Current', unit: 'A', color: '#3b82f6' },
+        '40231': { name: 'kwh', displayName: 'Energy', unit: 'kWh', color: '#10b981' }
+      };
+      
+      const timestampMap = {};
+      
+      data.forEach(item => {
+        const paramInfo = addressMap[item.address];
+        if (paramInfo) {
+          const timestamp = item.timestamp;
+          if (!timestampMap[timestamp]) {
+            timestampMap[timestamp] = {
+              timestamp: timestamp,
+              shortTime: new Date(timestamp).toLocaleString('en-IN', {
+                timeZone: 'Asia/Kolkata',
+                month: 'short',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+              }),
+              dateTime: new Date(timestamp)
+            };
+          }
+          timestampMap[timestamp][paramInfo.name] = parseFloat(item.value) || 0;
+        }
+      });
+      
+      const formattedData = Object.values(timestampMap).sort((a, b) => a.dateTime - b.dateTime);
+      
+      setRealtimeTrendData(prevData => {
+        const dataChanged = JSON.stringify(formattedData) !== JSON.stringify(prevData);
+        return dataChanged ? formattedData : prevData;
+      });
+      
+    } catch (err) {
+      console.error('Real-time trend data fetch failed:', err);
+    } finally {
+      setRealtimeTrendLoading(false);
+    }
+  }, [API_BASE]);
 
   // Auto-refresh every 5 seconds for main data
   useEffect(() => {
@@ -253,7 +241,6 @@ const Container = () => {
     };
   }, [fetchEnergyData]);
 
-
   // Auto-refresh every 3 seconds for real-time trend
   useEffect(() => {
     fetchRealtimeTrendData();
@@ -266,239 +253,229 @@ const Container = () => {
     };
   }, [fetchRealtimeTrendData]);
 
-
   // Format datetime for Report API (YYYY-MM-DD HH:MM:SS)
-const formatDateTimeForReportAPI = (datetimeLocal) => {
-  const date = new Date(datetimeLocal);
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  const hours = String(date.getHours()).padStart(2, '0');
-  const minutes = String(date.getMinutes()).padStart(2, '0');
-  const seconds = String(date.getSeconds()).padStart(2, '0');
-  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
-};
+  const formatDateTimeForReportAPI = (datetimeLocal) => {
+    const date = new Date(datetimeLocal);
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    const seconds = String(date.getSeconds()).padStart(2, '0');
+    return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+  };
 
-
-// Fetch report data using the new Report API
-const fetchReportData = useCallback(async (page = 1) => {
-  try {
-    setReportLoading(true);
-    
-    const addressMap = {
-      'voltageR': '40099',
-      'voltageY': '40101', 
-      'voltageB': '40103',
-      'currentR': '40113',
-      'currentY': '40115',
-      'currentB': '40117',
-      'kwh': '40231'
-    };
-    
-    const fromDateTime = fromDateRef.current ? fromDateRef.current.value : reportConfig.fromDateTime;
-    const toDateTime = toDateRef.current ? toDateRef.current.value : reportConfig.toDateTime;
-    
-    const fromDateTimeFormatted = encodeURIComponent(formatDateTimeForReportAPI(fromDateTime));
-    const toDateTimeFormatted = encodeURIComponent(formatDateTimeForReportAPI(toDateTime));
-    
-    const apiUrl = `${REPORT_API}?address=${addressMap[reportConfig.tag]}&from=${fromDateTimeFormatted}&to=${toDateTimeFormatted}`;
-    
-    const response = await fetch(apiUrl);
-    
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status} - ${response.statusText}`);
-    }
-    
-    const data = await response.json();
-    
-    if (!Array.isArray(data)) {
-      throw new Error('Invalid API response format');
-    }
-    
-    const formattedData = data.map(item => ({
-      timestamp: new Date(item.timestamp).toLocaleString('en-IN', {
-        timeZone: 'Asia/Kolkata',
-        hour12: true,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit'
-      }),
-      shortTime: new Date(item.timestamp).toLocaleString('en-IN', {
-        timeZone: 'Asia/Kolkata',
-        month: 'short',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      }),
-      value: parseFloat(item.value) || 0,
-      dateTime: new Date(item.timestamp)
-    })).sort((a, b) => a.dateTime - b.dateTime);
-    
-    setReportData(formattedData);
-    
-  } catch (err) {
-    console.error('Report data fetch failed:', err);
-    setError(`Report Error: ${err.message}`);
-    setReportData([]);
-  } finally {
-    setReportLoading(false);
-  }
-}, [reportConfig.tag]);
-
-
-// Fetch alert log data - NEW
-// Fetch alert log data - CORRECTED
-const fetchAlertLogData = useCallback(async (count = 5) => {
-  try {
-    setAlertLogLoading(true);
-    const response = await fetch(`${ALERT_LOG_API}?last=${count}`);
-    
-    if (!response.ok) {
-      throw new Error(`API Error: ${response.status}`);
-    }
-    
-    const result = await response.json();
-    
-    // API returns: { count: number, data: array }
-    if (!result || !result.data || !Array.isArray(result.data)) {
-      throw new Error('Invalid API response format');
-    }
-    
-    // Sort by timestamp (most recent first)
-    const sortedData = result.data.sort((a, b) => 
-      new Date(b.timestamp) - new Date(a.timestamp)
-    );
-    
-    setAlertLogData(sortedData);
-    
-  } catch (err) {
-    console.error('Alert log fetch failed:', err);
-    setAlertLogData([]);
-  } finally {
-    setAlertLogLoading(false);
-  }
-}, [ALERT_LOG_API]);
-
-
-
-// Update threshold value
-const updateThreshold = useCallback(async (id, value) => {
-  try {
-    setThresholdLoading(true);
-    
-    // STEP 1: Update threshold value in database (R3 API)
-    const updateResponse = await fetch(THRESHOLD_API, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ id, value: value.toString() })
-    });
-    
-    if (!updateResponse.ok) throw new Error('Failed to update threshold');
-    
-    // STEP 2: Call R2 API to trigger alert checking Lambda (just trigger, no params needed)
+  // Fetch report data using the new Report API
+  const fetchReportData = useCallback(async (page = 1) => {
     try {
-      const alertResponse = await fetch('https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R2', {
-        method: 'PUT'
+      setReportLoading(true);
+      
+      const addressMap = {
+        'voltageR': '40099',
+        'voltageY': '40101', 
+        'voltageB': '40103',
+        'currentR': '40113',
+        'currentY': '40115',
+        'currentB': '40117',
+        'kwh': '40231'
+      };
+      
+      const fromDateTime = fromDateRef.current ? fromDateRef.current.value : reportConfig.fromDateTime;
+      const toDateTime = toDateRef.current ? toDateRef.current.value : reportConfig.toDateTime;
+      
+      const fromDateTimeFormatted = encodeURIComponent(formatDateTimeForReportAPI(fromDateTime));
+      const toDateTimeFormatted = encodeURIComponent(formatDateTimeForReportAPI(toDateTime));
+      
+      const apiUrl = `${REPORT_API}?address=${addressMap[reportConfig.tag]}&from=${fromDateTimeFormatted}&to=${toDateTimeFormatted}`;
+      
+      const response = await fetch(apiUrl);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!Array.isArray(data)) {
+        throw new Error('Invalid API response format');
+      }
+      
+      const formattedData = data.map(item => ({
+        timestamp: new Date(item.timestamp).toLocaleString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          hour12: true,
+          year: 'numeric',
+          month: '2-digit',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit'
+        }),
+        shortTime: new Date(item.timestamp).toLocaleString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          month: 'short',
+          day: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }),
+        value: parseFloat(item.value) || 0,
+        dateTime: new Date(item.timestamp)
+      })).sort((a, b) => a.dateTime - b.dateTime);
+      
+      setReportData(formattedData);
+      
+    } catch (err) {
+      console.error('Report data fetch failed:', err);
+      setError(`Report Error: ${err.message}`);
+      setReportData([]);
+    } finally {
+      setReportLoading(false);
+    }
+  }, [reportConfig.tag, REPORT_API]);
+
+  // Fetch alert log data
+  const fetchAlertLogData = useCallback(async (count = 5) => {
+    try {
+      setAlertLogLoading(true);
+      const response = await fetch(`${ALERT_LOG_API}?last=${count}`);
+      
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      // API returns: { count: number, data: array }
+      if (!result || !result.data || !Array.isArray(result.data)) {
+        throw new Error('Invalid API response format');
+      }
+      
+      // Sort by timestamp (most recent first)
+      const sortedData = result.data.sort((a, b) => 
+        new Date(b.timestamp) - new Date(a.timestamp)
+      );
+      
+      setAlertLogData(sortedData);
+      
+    } catch (err) {
+      console.error('Alert log fetch failed:', err);
+      setAlertLogData([]);
+    } finally {
+      setAlertLogLoading(false);
+    }
+  }, [ALERT_LOG_API]);
+
+  // Update threshold value
+  const updateThreshold = useCallback(async (id, value) => {
+    try {
+      setThresholdLoading(true);
+      
+      // STEP 1: Update threshold value in database (R3 API)
+      const updateResponse = await fetch(THRESHOLD_API, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ id, value: value.toString() })
       });
       
-      if (!alertResponse.ok) {
-        console.warn('Alert check trigger failed, but threshold was updated');
+      if (!updateResponse.ok) throw new Error('Failed to update threshold');
+      
+      // STEP 2: Call R2 API to trigger alert checking Lambda
+      try {
+        const alertResponse = await fetch('https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R2', {
+          method: 'PUT'
+        });
+        
+        if (!alertResponse.ok) {
+          console.warn('Alert check trigger failed, but threshold was updated');
+        }
+      } catch (alertErr) {
+        console.warn('Alert API trigger failed:', alertErr.message);
       }
-    } catch (alertErr) {
-      console.warn('Alert API trigger failed:', alertErr.message);
-      // Don't throw error - threshold was already updated successfully
+      
+      // STEP 3: Fetch updated threshold values to refresh display
+      const phases = ['I_RPhase', 'I_YPhase', 'I_BPhase'];
+      const promises = phases.map(async (phase) => {
+        const response = await fetch(`${THRESHOLD_API}?id=${phase}`);
+        if (!response.ok) throw new Error(`Failed to fetch ${phase}`);
+        const data = await response.json();
+        return { phase, value: parseFloat(data.value) || 0 };
+      });
+      
+      const results = await Promise.all(promises);
+      const newThresholdData = {};
+      results.forEach(({ phase, value }) => {
+        newThresholdData[phase] = value;
+      });
+      
+      setThresholdData(newThresholdData);
+      setThresholdError(null);
+      
+      // STEP 4: Show success notification popup
+      setToast({
+        message: `Threshold for ${id} updated successfully to ${value} A`,
+        type: 'success'
+      });
+      
+    } catch (err) {
+      console.error('Threshold update failed:', err);
+      setThresholdError(err.message);
+      
+      // Show error notification popup
+      setToast({
+        message: `Failed to update threshold: ${err.message}`,
+        type: 'error'
+      });
+    } finally {
+      setThresholdLoading(false);
     }
-    
-    // STEP 3: Fetch updated threshold values to refresh display
-    const phases = ['I_RPhase', 'I_YPhase', 'I_BPhase'];
-    const promises = phases.map(async (phase) => {
-      const response = await fetch(`${THRESHOLD_API}?id=${phase}`);
-      if (!response.ok) throw new Error(`Failed to fetch ${phase}`);
-      const data = await response.json();
-      return { phase, value: parseFloat(data.value) || 0 };
-    });
-    
-    const results = await Promise.all(promises);
-    const newThresholdData = {};
-    results.forEach(({ phase, value }) => {
-      newThresholdData[phase] = value;
-    });
-    
-    setThresholdData(newThresholdData);
-    setThresholdError(null);
-    
-    // STEP 4: Show success notification popup
-    setToast({
-      message: `Threshold for ${id} updated successfully to ${value} A`,
-      type: 'success'
-    });
-    
-  } catch (err) {
-    console.error('Threshold update failed:', err);
-    setThresholdError(err.message);
-    
-    // Show error notification popup
-    setToast({
-      message: `Failed to update threshold: ${err.message}`,
-      type: 'error'
-    });
-  } finally {
-    setThresholdLoading(false);
-  }
-}, [THRESHOLD_API]);
+  }, [THRESHOLD_API]);
 
-
-// Fetch threshold values - REMOVED from dependency array to prevent auto-refresh
-const fetchThresholdData = useCallback(async () => {
-  try {
-    setThresholdLoading(true);
-    const phases = ['I_RPhase', 'I_YPhase', 'I_BPhase'];
-    
-    const promises = phases.map(async (phase) => {
-      const response = await fetch(`${THRESHOLD_API}?id=${phase}`);
-      if (!response.ok) throw new Error(`Failed to fetch ${phase}`);
-      const data = await response.json();
-      return { phase, value: parseFloat(data.value) || 0 };
-    });
-    
-    const results = await Promise.all(promises);
-    const newThresholdData = {};
-    results.forEach(({ phase, value }) => {
-      newThresholdData[phase] = value;
-    });
-    
-    setThresholdData(newThresholdData);
-    setThresholdError(null);
-  } catch (err) {
-    console.error('Threshold fetch failed:', err);
-    setThresholdError(err.message);
-  } finally {
-    setThresholdLoading(false);
-  }
-}, [THRESHOLD_API]);
-
+  // Fetch threshold values
+  const fetchThresholdData = useCallback(async () => {
+    try {
+      setThresholdLoading(true);
+      const phases = ['I_RPhase', 'I_YPhase', 'I_BPhase'];
+      
+      const promises = phases.map(async (phase) => {
+        const response = await fetch(`${THRESHOLD_API}?id=${phase}`);
+        if (!response.ok) throw new Error(`Failed to fetch ${phase}`);
+        const data = await response.json();
+        return { phase, value: parseFloat(data.value) || 0 };
+      });
+      
+      const results = await Promise.all(promises);
+      const newThresholdData = {};
+      results.forEach(({ phase, value }) => {
+        newThresholdData[phase] = value;
+      });
+      
+      setThresholdData(newThresholdData);
+      setThresholdError(null);
+    } catch (err) {
+      console.error('Threshold fetch failed:', err);
+      setThresholdError(err.message);
+    } finally {
+      setThresholdLoading(false);
+    }
+  }, [THRESHOLD_API]);
 
   // Fetch threshold data ONLY on initial component mount
   useEffect(() => {
     fetchThresholdData();
-  }, []); // EMPTY dependency array - runs only once on mount
+  }, [fetchThresholdData]);
   
   // Auto-fetch report data on initial page load with default 24-hour range
   useEffect(() => {
     fetchReportData(1);
-  }, []); // Empty dependency array - runs only once when page loads
+  }, [fetchReportData]);
 
-  // Fetch alert log data on initial page load - NEW
+  // Fetch alert log data on initial page load
   useEffect(() => {
     fetchAlertLogData(alertLogCount);
-  }, []); // Empty dependency array - runs only once when page loads
-
+  }, [fetchAlertLogData, alertLogCount]);
 
   // Handle datetime input events
   const handleDateTimeEvents = (ref, isFromDate = true) => {
@@ -512,7 +489,6 @@ const fetchThresholdData = useCallback(async () => {
         clearInterval(autoRefreshRef.current);
       }
     };
-
 
     const handleBlur = () => {
       setTimeout(() => {
@@ -545,7 +521,6 @@ const fetchThresholdData = useCallback(async () => {
     };
   };
 
-
   useEffect(() => {
     const cleanup1 = handleDateTimeEvents(fromDateRef, true);
     const cleanup2 = handleDateTimeEvents(toDateRef, false);
@@ -556,51 +531,51 @@ const fetchThresholdData = useCallback(async () => {
     };
   }, []);
   
-  // Pass all props to Body component
-  return (
-    <Body
-    darkMode={darkMode}
-    setDarkMode={setDarkMode}
-    sidebarOpen={sidebarOpen}
-    setSidebarOpen={setSidebarOpen}
-    energyData={energyData}
-    deviceOnline={deviceOnline}
-    lastUpdate={lastUpdate}
-    isLoading={isLoading}
-    error={error}
-    currentTime={currentTime}
-    reportData={reportData}
-    reportLoading={reportLoading}
-    reportConfig={reportConfig}
-    setReportConfig={setReportConfig}
-    fromDateRef={fromDateRef}
-    toDateRef={toDateRef}
-    realtimeRef={realtimeRef}
-    reportsRef={reportsRef}
-    trendsRef={trendsRef}
-    realtimeTrendSectionRef={realtimeTrendSectionRef}
-    fetchReportData={fetchReportData}
-    realtimeTrendData={realtimeTrendData}
-    thresholdRef={thresholdRef}
-    thresholdData={thresholdData}
-    thresholdLoading={thresholdLoading}
-    thresholdError={thresholdError}
-    updateThreshold={updateThreshold}
-    fetchThresholdData={fetchThresholdData}
-    realtimeTrendLoading={realtimeTrendLoading}
-    thresholdEditingState={thresholdEditingState}
-    setThresholdEditingState={setThresholdEditingState}
-    toast={toast}
-    setToast={setToast}
-    alertLogRef={alertLogRef}
-    alertLogData={alertLogData}
-    alertLogLoading={alertLogLoading}
-    alertLogCount={alertLogCount}
-    setAlertLogCount={setAlertLogCount}
-    fetchAlertLogData={fetchAlertLogData}
-    />
-  );
-};
+  // Prepare props object to pass to children
+  const props = {
+    darkMode,
+    setDarkMode,
+    sidebarOpen,
+    setSidebarOpen,
+    energyData,
+    deviceOnline,
+    lastUpdate,
+    isLoading,
+    error,
+    currentTime,
+    reportData,
+    reportLoading,
+    reportConfig,
+    setReportConfig,
+    fromDateRef,
+    toDateRef,
+    realtimeRef,
+    reportsRef,
+    trendsRef,
+    realtimeTrendSectionRef,
+    fetchReportData,
+    realtimeTrendData,
+    thresholdRef,
+    thresholdData,
+    thresholdLoading,
+    thresholdError,
+    updateThreshold,
+    fetchThresholdData,
+    realtimeTrendLoading,
+    thresholdEditingState,
+    setThresholdEditingState,
+    toast,
+    setToast,
+    alertLogRef,
+    alertLogData,
+    alertLogLoading,
+    alertLogCount,
+    setAlertLogCount,
+    fetchAlertLogData
+  };
 
+  // Pass props to children via render prop pattern
+  return typeof children === 'function' ? children(props) : null;
+};
 
 export default Container;

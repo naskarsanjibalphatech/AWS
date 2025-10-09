@@ -25,8 +25,34 @@ function App() {
           path="/login"
           element={<LoginPage onLoginSuccess={handleLoginSuccess} />}
         />
+        
+        {/* Protected Routes - All dashboard pages */}
         <Route
           path="/dashboard"
+          element={isLoggedIn ? <Wrapper /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/live-data"
+          element={isLoggedIn ? <Wrapper /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/live-trends"
+          element={isLoggedIn ? <Wrapper /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/alert-log"
+          element={isLoggedIn ? <Wrapper /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/threshold"
+          element={isLoggedIn ? <Wrapper /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/reports"
+          element={isLoggedIn ? <Wrapper /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/historical-trends"
           element={isLoggedIn ? <Wrapper /> : <Navigate to="/login" />}
         />
       </Routes>

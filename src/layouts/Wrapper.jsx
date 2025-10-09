@@ -1,7 +1,8 @@
 import { ConfigProvider, theme } from "antd";
 import { LIGHT_MODE_TOKEN } from "src/utils";
-import { Home } from "src/pages";
+import AppRouter from "src/pages/home/AppRouter";
 import { Toaster } from "react-hot-toast";
+
 export const Wrapper = () => {
   const { defaultAlgorithm } = theme;
   return (
@@ -11,7 +12,7 @@ export const Wrapper = () => {
         algorithm: defaultAlgorithm,
       }}
     >
-      <Home />
+      <AppRouter />
       <Toaster
         position="top-right"
         reverseOrder={false}
