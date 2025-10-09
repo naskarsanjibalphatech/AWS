@@ -8,6 +8,7 @@ import LiveData from '../../components/LiveData';
 import LiveTrends from '../../components/LiveTrends';
 import Threshold from '../../components/Threshold';
 import HistoricalReport from '../../components/HistoricalReport';
+import AlertLog from '../../components/AlertLog';
 
 const Body = ({
     darkMode,
@@ -42,6 +43,12 @@ const Body = ({
   realtimeTrendData,
   toast={toast},             // ← ADD THIS
   setToast={setToast},
+    alertLogRef,
+  alertLogData,
+  alertLogLoading,
+  alertLogCount,
+  setAlertLogCount,
+  fetchAlertLogData,
   realtimeTrendLoading
 }) => {
 
@@ -111,6 +118,16 @@ const Body = ({
               >
                 Live Trends
               </button>
+              <button
+    onClick={() => scrollToSection(alertLogRef)}
+    className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+      darkMode 
+        ? 'text-gray-300 hover:text-white' 
+        : 'text-gray-600 hover:text-gray-900'
+    }`}
+  >
+    Alert Log
+  </button>
               <button
                 onClick={() => scrollToSection(thresholdRef)}
                 className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -216,6 +233,17 @@ const Body = ({
                 Live Trends
               </button>
               <button
+        onClick={() => {
+          scrollToSection(alertLogRef);
+          setSidebarOpen(false);
+        }}
+        className={`block w-full text-left px-3 py-2 rounded-md text-base font-medium ${
+          darkMode ? 'text-gray-300 hover:text-white' : 'text-gray-600 hover:text-gray-900'
+        }`}
+      >
+        Alert Log
+      </button>
+              <button
                 onClick={() => {
                   scrollToSection(reportsRef);
                   setSidebarOpen(false);
@@ -306,6 +334,16 @@ const Body = ({
           realtimeTrendData={realtimeTrendData}
           realtimeTrendLoading={realtimeTrendLoading}
         />
+        {/* Alert Log Section */}
+<AlertLog 
+  alertLogRef={alertLogRef}
+  darkMode={darkMode}
+  alertLogData={alertLogData}
+  alertLogLoading={alertLogLoading}
+  alertLogCount={alertLogCount}
+  setAlertLogCount={setAlertLogCount}
+  fetchAlertLogData={fetchAlertLogData}
+/>
 
         {/* Threshold Section */}
         <Threshold 

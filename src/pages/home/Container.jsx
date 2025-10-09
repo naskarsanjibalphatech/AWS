@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Body from './Body';
 
+
 const Container = () => {
   const [darkMode, setDarkMode] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -28,6 +29,7 @@ const Container = () => {
     toDateTime: new Date().toISOString().slice(0, 16)
   });
 
+
   const [realtimeTrendData, setRealtimeTrendData] = useState([]);
   const [realtimeTrendLoading, setRealtimeTrendLoading] = useState(false);
   
@@ -39,11 +41,19 @@ const Container = () => {
   const [thresholdLoading, setThresholdLoading] = useState(false);
   const [thresholdError, setThresholdError] = useState(null);
 
+  // Alert Log State - NEW
+  const [alertLogData, setAlertLogData] = useState([]);
+  const [alertLogLoading, setAlertLogLoading] = useState(false);
+  const [alertLogCount, setAlertLogCount] = useState(5);
+
+
   // Add API endpoints
   const THRESHOLD_API = 'https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R3';
   const API_BASE = 'https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/';
   const TRIGGER_API = 'https://yv2f6ynj93.execute-api.ap-south-1.amazonaws.com/default/AWSToUSR_Kiswok';
   const REPORT_API = 'https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R2';
+  const ALERT_LOG_API = 'https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R4'; // NEW
+
 
   const fromDateRef = useRef(null);
   const toDateRef = useRef(null);
@@ -53,11 +63,14 @@ const Container = () => {
   const realtimeTrendRef = useRef(null);
   const thresholdRef = useRef(null);
 
+
   // Navigation references
   const realtimeRef = useRef(null);
   const reportsRef = useRef(null);
   const trendsRef = useRef(null);
   const realtimeTrendSectionRef = useRef(null);
+  const alertLogRef = useRef(null); // NEW
+
 
   // Update current time every second
   useEffect(() => {
@@ -66,6 +79,7 @@ const Container = () => {
     }, 1000);
     return () => clearInterval(timer);
   }, []);
+
 
   // Background Data Trigger Function - Runs every 3 seconds
   const triggerDataFetch = useCallback(async () => {
@@ -85,6 +99,7 @@ const Container = () => {
     }
   }, []);
 
+
   // Setup Background Data Trigger Every 3 seconds
   useEffect(() => {
     triggerDataFetch();
@@ -96,6 +111,7 @@ const Container = () => {
       }
     };
   }, [triggerDataFetch]);
+
 
   // Fetch energy data
   const fetchEnergyData = useCallback(async () => {
@@ -155,6 +171,7 @@ const Container = () => {
       setIsLoading(false);
     }
   }, []);
+
 
   // Fetch real-time trend data (last 5 readings for all parameters)
  const fetchRealtimeTrendData = useCallback(async () => {
@@ -219,6 +236,7 @@ const Container = () => {
   }
 }, [API_BASE]);
 
+
   // Auto-refresh every 5 seconds for main data
   useEffect(() => {
     const startAutoRefresh = () => {
@@ -235,6 +253,7 @@ const Container = () => {
     };
   }, [fetchEnergyData]);
 
+
   // Auto-refresh every 3 seconds for real-time trend
   useEffect(() => {
     fetchRealtimeTrendData();
@@ -247,8 +266,8 @@ const Container = () => {
     };
   }, [fetchRealtimeTrendData]);
 
+
   // Format datetime for Report API (YYYY-MM-DD HH:MM:SS)
-// Format datetime for Report API (YYYY-MM-DD HH:MM:SS)
 const formatDateTimeForReportAPI = (datetimeLocal) => {
   const date = new Date(datetimeLocal);
   const year = date.getFullYear();
@@ -259,6 +278,7 @@ const formatDateTimeForReportAPI = (datetimeLocal) => {
   const seconds = String(date.getSeconds()).padStart(2, '0');
   return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
 };
+
 
 // Fetch report data using the new Report API
 const fetchReportData = useCallback(async (page = 1) => {
@@ -329,6 +349,42 @@ const fetchReportData = useCallback(async (page = 1) => {
   }
 }, [reportConfig.tag]);
 
+
+// Fetch alert log data - NEW
+// Fetch alert log data - CORRECTED
+const fetchAlertLogData = useCallback(async (count = 5) => {
+  try {
+    setAlertLogLoading(true);
+    const response = await fetch(`${ALERT_LOG_API}?last=${count}`);
+    
+    if (!response.ok) {
+      throw new Error(`API Error: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    // API returns: { count: number, data: array }
+    if (!result || !result.data || !Array.isArray(result.data)) {
+      throw new Error('Invalid API response format');
+    }
+    
+    // Sort by timestamp (most recent first)
+    const sortedData = result.data.sort((a, b) => 
+      new Date(b.timestamp) - new Date(a.timestamp)
+    );
+    
+    setAlertLogData(sortedData);
+    
+  } catch (err) {
+    console.error('Alert log fetch failed:', err);
+    setAlertLogData([]);
+  } finally {
+    setAlertLogLoading(false);
+  }
+}, [ALERT_LOG_API]);
+
+
+
 // Update threshold value
 const updateThreshold = useCallback(async (id, value) => {
   try {
@@ -345,20 +401,19 @@ const updateThreshold = useCallback(async (id, value) => {
     
     if (!updateResponse.ok) throw new Error('Failed to update threshold');
     
-    // STEP 2: Call R2 API to trigger alert checking Lambda
-// STEP 2: Call R2 API to trigger alert checking Lambda (just trigger, no params needed)
-try {
-  const alertResponse = await fetch('https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R2', {
-    method: 'PUT'
-  });
-  
-  if (!alertResponse.ok) {
-    console.warn('Alert check trigger failed, but threshold was updated');
-  }
-} catch (alertErr) {
-  console.warn('Alert API trigger failed:', alertErr.message);
-  // Don't throw error - threshold was already updated successfully
-}
+    // STEP 2: Call R2 API to trigger alert checking Lambda (just trigger, no params needed)
+    try {
+      const alertResponse = await fetch('https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R2', {
+        method: 'PUT'
+      });
+      
+      if (!alertResponse.ok) {
+        console.warn('Alert check trigger failed, but threshold was updated');
+      }
+    } catch (alertErr) {
+      console.warn('Alert API trigger failed:', alertErr.message);
+      // Don't throw error - threshold was already updated successfully
+    }
     
     // STEP 3: Fetch updated threshold values to refresh display
     const phases = ['I_RPhase', 'I_YPhase', 'I_BPhase'];
@@ -398,6 +453,7 @@ try {
   }
 }, [THRESHOLD_API]);
 
+
 // Fetch threshold values - REMOVED from dependency array to prevent auto-refresh
 const fetchThresholdData = useCallback(async () => {
   try {
@@ -427,10 +483,22 @@ const fetchThresholdData = useCallback(async () => {
   }
 }, [THRESHOLD_API]);
 
+
   // Fetch threshold data ONLY on initial component mount
   useEffect(() => {
     fetchThresholdData();
   }, []); // EMPTY dependency array - runs only once on mount
+  
+  // Auto-fetch report data on initial page load with default 24-hour range
+  useEffect(() => {
+    fetchReportData(1);
+  }, []); // Empty dependency array - runs only once when page loads
+
+  // Fetch alert log data on initial page load - NEW
+  useEffect(() => {
+    fetchAlertLogData(alertLogCount);
+  }, []); // Empty dependency array - runs only once when page loads
+
 
   // Handle datetime input events
   const handleDateTimeEvents = (ref, isFromDate = true) => {
@@ -444,6 +512,7 @@ const fetchThresholdData = useCallback(async () => {
         clearInterval(autoRefreshRef.current);
       }
     };
+
 
     const handleBlur = () => {
       setTimeout(() => {
@@ -476,6 +545,7 @@ const fetchThresholdData = useCallback(async () => {
     };
   };
 
+
   useEffect(() => {
     const cleanup1 = handleDateTimeEvents(fromDateRef, true);
     const cleanup2 = handleDateTimeEvents(toDateRef, false);
@@ -486,7 +556,6 @@ const fetchThresholdData = useCallback(async () => {
     };
   }, []);
   
-  // Memoize threshold-related props to prevent unnecessary re-renders
   // Pass all props to Body component
   return (
     <Body
@@ -521,10 +590,17 @@ const fetchThresholdData = useCallback(async () => {
     realtimeTrendLoading={realtimeTrendLoading}
     thresholdEditingState={thresholdEditingState}
     setThresholdEditingState={setThresholdEditingState}
-    toast={toast}              // ← ADD THIS LINE
-    setToast={setToast}  
+    toast={toast}
+    setToast={setToast}
+    alertLogRef={alertLogRef}
+    alertLogData={alertLogData}
+    alertLogLoading={alertLogLoading}
+    alertLogCount={alertLogCount}
+    setAlertLogCount={setAlertLogCount}
+    fetchAlertLogData={fetchAlertLogData}
     />
   );
 };
+
 
 export default Container;
