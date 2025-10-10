@@ -15,9 +15,7 @@ const HistoricalReportPage = (props) => {
     setReportConfig,
     fromDateRef,
     toDateRef,
-    fetchReportData,
-    showReports = false,
-    showTrends = false
+    fetchReportData
   } = props;
 
   return (
@@ -35,7 +33,6 @@ const HistoricalReportPage = (props) => {
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
         <HistoricalReport 
           reportsRef={React.createRef()}
-          trendsRef={React.createRef()}
           darkMode={darkMode}
           reportData={reportData}
           reportLoading={reportLoading}
