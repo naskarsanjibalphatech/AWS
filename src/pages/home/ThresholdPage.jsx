@@ -1,6 +1,7 @@
 import React from 'react';
 import Header from '../../components/Header';
 import Threshold from '../../components/Threshold';
+import Footer from '../../components/Footer';
 
 const ThresholdPage = (props) => {
   const {
@@ -41,6 +42,7 @@ const ThresholdPage = (props) => {
           setThresholdEditingState={setThresholdEditingState}
         />
       </main>
+      <Footer darkMode={darkMode} /> {/* ADD THIS */}
     </div>
   );
 };

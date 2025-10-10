@@ -11,6 +11,7 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts';
+import Footer from '../../components/Footer';
 
 const HistoricalTrendsPage = (props) => {
   const {
@@ -385,6 +386,7 @@ const HistoricalTrendsPage = (props) => {
           </div>
         )}
       </main>
+      <Footer darkMode={darkMode} /> {/* ADD THIS */}
     </div>
   );
 };

@@ -2,6 +2,7 @@ import React from 'react';
 import Header from '../../components/Header';
 import LiveData from '../../components/LiveData';
 import { Wifi, WifiOff } from 'lucide-react';
+import Footer from '../../components/Footer';
 
 const LiveDataPage = (props) => {
   const {
@@ -93,6 +94,7 @@ const LiveDataPage = (props) => {
           energyData={energyData}
         />
       </main>
+      <Footer darkMode={darkMode} /> {/* ADD THIS */}
     </div>
   );
 };

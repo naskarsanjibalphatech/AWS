@@ -8,6 +8,7 @@ import ThresholdPage from './ThresholdPage';
 import HistoricalReportPage from './HistoricalReportPage';
 import HistoricalTrendsPage from './HistoricalTrendsPage'; // NEW IMPORT
 
+
 const AppRouter = () => {
   const location = useLocation();
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import Header from '../../components/Header';
 import HistoricalReport from '../../components/HistoricalReport';
+import Footer from '../../components/Footer';
 
 const HistoricalReportPage = (props) => {
   const {
@@ -43,6 +44,7 @@ const HistoricalReportPage = (props) => {
           fetchReportData={fetchReportData}
         />
       </main>
+      <Footer darkMode={darkMode} /> {/* ADD THIS */}
     </div>
   );
 };

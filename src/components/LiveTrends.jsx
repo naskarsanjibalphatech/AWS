@@ -28,10 +28,14 @@ const LiveTrends = ({ realtimeTrendSectionRef, darkMode, realtimeTrendData, real
 
   return (
     <section ref={realtimeTrendSectionRef} className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
+      {/* Header Section - Mobile Responsive */}
+      <div className="space-y-4">
+        {/* Title Row */}
+        <div className="flex flex-wrap items-center gap-3">
           <TrendingUp className="h-6 w-6 text-blue-600" />
-          <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>Live Trends</h2>
+          <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+            Live Trends
+          </h2>
           <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
             darkMode ? 'bg-green-900/30 text-green-400' : 'bg-green-100 text-green-700'
           } animate-pulse`}>
@@ -39,11 +43,12 @@ const LiveTrends = ({ realtimeTrendSectionRef, darkMode, realtimeTrendData, real
           </span>
         </div>
 
-        {/* Phase Toggle Controls */}
-        <div className="flex items-center space-x-2">
-          <span className={`text-sm font-medium mr-2 ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+        {/* Phase Toggle Controls Row - Mobile Responsive */}
+        <div className="flex flex-wrap items-center gap-2">
+          <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
             Show:
           </span>
+          
           <button
             onClick={() => togglePhase('R')}
             className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium transition-all ${

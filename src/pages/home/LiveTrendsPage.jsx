@@ -1,6 +1,7 @@
 import React from 'react';
 import Header from '../../components/Header';
 import LiveTrends from '../../components/LiveTrends';
+import Footer from '../../components/Footer';
 
 const LiveTrendsPage = (props) => {
   const {
@@ -33,6 +34,7 @@ const LiveTrendsPage = (props) => {
           realtimeTrendLoading={realtimeTrendLoading}
         />
       </main>
+      <Footer darkMode={darkMode} /> {/* ADD THIS */}
     </div>
   );
 };

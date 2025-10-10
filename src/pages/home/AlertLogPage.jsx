@@ -1,6 +1,7 @@
 import React from 'react';
 import Header from '../../components/Header';
 import AlertLog from '../../components/AlertLog';
+import Footer from '../../components/Footer';
 
 const AlertLogPage = (props) => {
   const {
@@ -39,6 +40,7 @@ const AlertLogPage = (props) => {
           fetchAlertLogData={fetchAlertLogData}
         />
       </main>
+      <Footer darkMode={darkMode} /> {/* ADD THIS */}
     </div>
   );
 };

@@ -9,6 +9,7 @@ import LiveTrends from '../../components/LiveTrends';
 import Threshold from '../../components/Threshold';
 import HistoricalReport from '../../components/HistoricalReport';
 import AlertLog from '../../components/AlertLog';
+import Footer from '../../components/Footer';
 
 const Body = ({
     darkMode,
@@ -374,6 +375,7 @@ const Body = ({
         />
 
       </main>
+      <Footer darkMode={darkMode} /> {/* ADD THIS */}
     </div>
   );
 };

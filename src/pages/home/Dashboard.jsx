@@ -6,6 +6,7 @@ import {
   Zap, TrendingUp, ArrowRight,
   Activity, Wifi, WifiOff, Bell
 } from 'lucide-react';
+import Footer from '../../components/Footer';
 
 const Dashboard = (props) => {
   const {
@@ -55,37 +56,37 @@ const Dashboard = (props) => {
           </p>
         </div>
 
-        {/* Device Status Banner */}
-        <div className={`rounded-xl p-4 shadow-lg ${
-          darkMode 
-            ? 'bg-gradient-to-r from-gray-800 to-gray-700 border border-gray-600' 
-            : 'bg-white border border-gray-200'
-        }`}>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-                Device Status:
-              </span>
-              {deviceOnline ? (
-                <div className="flex items-center space-x-2 text-green-500">
-                  <Wifi className="h-4 w-4" />
-                  <span className="font-medium">Connected</span>
-                </div>
-              ) : (
-                <div className="flex items-center space-x-2 text-red-500">
-                  <WifiOff className="h-4 w-4" />
-                  <span className="font-medium">Disconnected</span>
-                </div>
-              )}
-            </div>
-            <div className={`flex items-center space-x-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-              <span>Last Update:</span>
-              <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-                {lastUpdate ? formatDateTime(lastUpdate) : 'No data received'}
-              </span>
-            </div>
-          </div>
+{/* Device Status Banner */}
+<div className={`rounded-xl p-4 shadow-lg ${
+  darkMode 
+    ? 'bg-gradient-to-r from-gray-800 to-gray-700 border border-gray-600' 
+    : 'bg-white border border-gray-200'
+}`}>
+  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+    <div className="flex items-center space-x-4">
+      <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+        Device Status:
+      </span>
+      {deviceOnline ? (
+        <div className="flex items-center space-x-2 text-green-500">
+          <Wifi className="h-4 w-4" />
+          <span className="font-medium">Connected</span>
         </div>
+      ) : (
+        <div className="flex items-center space-x-2 text-red-500">
+          <WifiOff className="h-4 w-4" />
+          <span className="font-medium">Disconnected</span>
+        </div>
+      )}
+    </div>
+    <div className={`flex flex-col sm:flex-row sm:items-center sm:space-x-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+      <span>Last Update:</span>
+      <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+        {lastUpdate ? formatDateTime(lastUpdate) : 'No data received'}
+      </span>
+    </div>
+  </div>
+</div>
 
         {/* Live Data Overview */}
         <section className="space-y-4">
@@ -237,6 +238,7 @@ const Dashboard = (props) => {
           </button>
         </section>
       </main>
+      <Footer darkMode={darkMode} /> {/* ADD THIS */}
     </div>
   );
 };
