@@ -4,7 +4,7 @@ import Header from '../../components/Header';
 import LiveTrends from '../../components/LiveTrends';
 import { 
   Zap, TrendingUp, ArrowRight,
-  Activity, Wifi, WifiOff, Bell
+  Activity, Wifi, WifiOff, Bell, AlertTriangle
 } from 'lucide-react';
 import Footer from '../../components/Footer';
 
@@ -20,7 +20,9 @@ const Dashboard = (props) => {
     lastUpdate,
     alertLogData,
     realtimeTrendData,
-    realtimeTrendLoading
+    realtimeTrendLoading,
+    thresholdData,
+    alertStatus  // ⭐ NEW: Receive alertStatus
   } = props;
 
   const navigate = useNavigate();
@@ -32,6 +34,10 @@ const Dashboard = (props) => {
       hour12: true
     });
   };
+
+  // ⭐ NEW: Calculate active alerts count
+  const activeAlertsCount = alertStatus ? Object.values(alertStatus).filter(alert => alert).length : 0;
+  const hasActiveAlerts = activeAlertsCount > 0;
 
   return (
     <div className={`min-h-screen transition-colors duration-300 ${
@@ -56,37 +62,37 @@ const Dashboard = (props) => {
           </p>
         </div>
 
-{/* Device Status Banner */}
-<div className={`rounded-xl p-4 shadow-lg ${
-  darkMode 
-    ? 'bg-gradient-to-r from-gray-800 to-gray-700 border border-gray-600' 
-    : 'bg-white border border-gray-200'
-}`}>
-  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
-    <div className="flex items-center space-x-4">
-      <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-        Device Status:
-      </span>
-      {deviceOnline ? (
-        <div className="flex items-center space-x-2 text-green-500">
-          <Wifi className="h-4 w-4" />
-          <span className="font-medium">Connected</span>
+        {/* Device Status Banner */}
+        <div className={`rounded-xl p-4 shadow-lg ${
+          darkMode 
+            ? 'bg-gradient-to-r from-gray-800 to-gray-700 border border-gray-600' 
+            : 'bg-white border border-gray-200'
+        }`}>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-3 sm:space-y-0">
+            <div className="flex items-center space-x-4">
+              <span className={`text-sm font-medium ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+                Device Status:
+              </span>
+              {deviceOnline ? (
+                <div className="flex items-center space-x-2 text-green-500">
+                  <Wifi className="h-4 w-4" />
+                  <span className="font-medium">Connected</span>
+                </div>
+              ) : (
+                <div className="flex items-center space-x-2 text-red-500">
+                  <WifiOff className="h-4 w-4" />
+                  <span className="font-medium">Disconnected</span>
+                </div>
+              )}
+            </div>
+            <div className={`flex flex-col sm:flex-row sm:items-center sm:space-x-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
+              <span>Last Update:</span>
+              <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
+                {lastUpdate ? formatDateTime(lastUpdate) : 'No data received'}
+              </span>
+            </div>
+          </div>
         </div>
-      ) : (
-        <div className="flex items-center space-x-2 text-red-500">
-          <WifiOff className="h-4 w-4" />
-          <span className="font-medium">Disconnected</span>
-        </div>
-      )}
-    </div>
-    <div className={`flex flex-col sm:flex-row sm:items-center sm:space-x-2 text-sm ${darkMode ? 'text-gray-300' : 'text-gray-600'}`}>
-      <span>Last Update:</span>
-      <span className={`font-medium ${darkMode ? 'text-gray-200' : 'text-gray-700'}`}>
-        {lastUpdate ? formatDateTime(lastUpdate) : 'No data received'}
-      </span>
-    </div>
-  </div>
-</div>
 
         {/* Live Data Overview */}
         <section className="space-y-4">
@@ -157,32 +163,67 @@ const Dashboard = (props) => {
               <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>kWh</p>
             </div>
 
-            {/* Active Alerts */}
+            {/* ⭐ NEW: Active Alerts with Blinking */}
             <div className={`rounded-xl p-4 ${
-              darkMode 
-                ? 'bg-gradient-to-br from-red-900/20 to-gray-700 border border-red-800' 
-                : 'bg-red-50 border border-red-200'
-            } shadow-lg`}>
-              <p className={`text-xs font-medium ${darkMode ? 'text-red-400' : 'text-red-600'}`}>
-                Recent Alerts
-              </p>
-              <p className={`text-2xl font-bold mt-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                {alertLogData.length}
-              </p>
-              <p className={`text-xs mt-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'}`}>Total</p>
+              hasActiveAlerts
+                ? 'bg-red-600 animate-pulse shadow-2xl'
+                : darkMode 
+                  ? 'bg-gradient-to-br from-gray-800 to-gray-700 border border-gray-600' 
+                  : 'bg-white border border-gray-200'
+            } shadow-lg`}
+            style={{
+              boxShadow: hasActiveAlerts ? '0 0 30px rgba(239, 68, 68, 0.8)' : undefined
+            }}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className={`text-xs font-medium ${
+                    hasActiveAlerts ? 'text-white' : darkMode ? 'text-gray-400' : 'text-gray-600'
+                  }`}>
+                    Active Alerts
+                  </p>
+                  <p className={`text-2xl font-bold mt-2 ${
+                    hasActiveAlerts ? 'text-white' : darkMode ? 'text-white' : 'text-gray-900'
+                  }`}>
+                    {activeAlertsCount}
+                  </p>
+                  <p className={`text-xs mt-1 ${
+                    hasActiveAlerts ? 'text-white' : darkMode ? 'text-gray-400' : 'text-gray-500'
+                  }`}>
+                    Current
+                  </p>
+                </div>
+                <AlertTriangle className={`h-8 w-8 ${
+                  hasActiveAlerts ? 'text-white animate-bounce' : 'text-orange-500'
+                }`} />
+              </div>
+              
+              {/* Alert Details */}
+              {hasActiveAlerts && (
+                <div className="mt-3 space-y-1 border-t border-white/30 pt-2">
+                  {alertStatus.I_RPhase && (
+                    <div className="text-white text-xs font-semibold">• R Phase Current</div>
+                  )}
+                  {alertStatus.I_YPhase && (
+                    <div className="text-white text-xs font-semibold">• Y Phase Current</div>
+                  )}
+                  {alertStatus.I_BPhase && (
+                    <div className="text-white text-xs font-semibold">• B Phase Current</div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </section>
 
         {/* Live Trends Section */}
-<section>
-  <LiveTrends 
-    realtimeTrendSectionRef={React.createRef()}
-    darkMode={darkMode}
-    realtimeTrendData={realtimeTrendData}
-    realtimeTrendLoading={realtimeTrendLoading}
-  />
-</section>
+        <section>
+          <LiveTrends 
+            realtimeTrendSectionRef={React.createRef()}
+            darkMode={darkMode}
+            realtimeTrendData={realtimeTrendData}
+            realtimeTrendLoading={realtimeTrendLoading}
+          />
+        </section>
 
         {/* Quick Actions */}
         <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -238,7 +279,7 @@ const Dashboard = (props) => {
           </button>
         </section>
       </main>
-      <Footer darkMode={darkMode} /> {/* ADD THIS */}
+      <Footer darkMode={darkMode} />
     </div>
   );
 };

@@ -38,6 +38,13 @@ const Container = ({ children }) => {
   const [thresholdLoading, setThresholdLoading] = useState(false);
   const [thresholdError, setThresholdError] = useState(null);
 
+  // ⭐ NEW: Alert Status State
+  const [alertStatus, setAlertStatus] = useState({
+    I_RPhase: false,
+    I_YPhase: false,
+    I_BPhase: false
+  });
+
   // Alert Log State
   const [alertLogData, setAlertLogData] = useState([]);
   const [alertLogLoading, setAlertLogLoading] = useState(false);
@@ -57,6 +64,13 @@ const Container = ({ children }) => {
   const triggerRef = useRef(null);
   const realtimeTrendRef = useRef(null);
   const thresholdRef = useRef(null);
+  
+  // ⭐ NEW: Track last alert state
+  const lastAlertState = useRef({
+    I_RPhase: false,
+    I_YPhase: false,
+    I_BPhase: false
+  });
 
   // Navigation references
   const realtimeRef = useRef(null);
@@ -346,12 +360,10 @@ const Container = ({ children }) => {
       
       const result = await response.json();
       
-      // API returns: { count: number, data: array }
       if (!result || !result.data || !Array.isArray(result.data)) {
         throw new Error('Invalid API response format');
       }
       
-      // Sort by timestamp (most recent first)
       const sortedData = result.data.sort((a, b) => 
         new Date(b.timestamp) - new Date(a.timestamp)
       );
@@ -371,7 +383,6 @@ const Container = ({ children }) => {
     try {
       setThresholdLoading(true);
       
-      // STEP 1: Update threshold value in database (R3 API)
       const updateResponse = await fetch(THRESHOLD_API, {
         method: 'PUT',
         headers: {
@@ -382,7 +393,6 @@ const Container = ({ children }) => {
       
       if (!updateResponse.ok) throw new Error('Failed to update threshold');
       
-      // STEP 2: Call R2 API to trigger alert checking Lambda
       try {
         const alertResponse = await fetch('https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R2', {
           method: 'PUT'
@@ -395,7 +405,6 @@ const Container = ({ children }) => {
         console.warn('Alert API trigger failed:', alertErr.message);
       }
       
-      // STEP 3: Fetch updated threshold values to refresh display
       const phases = ['I_RPhase', 'I_YPhase', 'I_BPhase'];
       const promises = phases.map(async (phase) => {
         const response = await fetch(`${THRESHOLD_API}?id=${phase}`);
@@ -413,7 +422,6 @@ const Container = ({ children }) => {
       setThresholdData(newThresholdData);
       setThresholdError(null);
       
-      // STEP 4: Show success notification popup
       setToast({
         message: `Threshold for ${id} updated successfully to ${value} A`,
         type: 'success'
@@ -423,7 +431,6 @@ const Container = ({ children }) => {
       console.error('Threshold update failed:', err);
       setThresholdError(err.message);
       
-      // Show error notification popup
       setToast({
         message: `Failed to update threshold: ${err.message}`,
         type: 'error'
@@ -462,6 +469,58 @@ const Container = ({ children }) => {
     }
   }, [THRESHOLD_API]);
 
+  // ⭐ NEW: Check threshold breaches continuously
+  const checkThresholdBreaches = useCallback(async () => {
+    try {
+      if (!energyData.currentR || !thresholdData.I_RPhase) {
+        return;
+      }
+
+      const phases = [
+        { id: 'I_RPhase', current: energyData.currentR, threshold: thresholdData.I_RPhase },
+        { id: 'I_YPhase', current: energyData.currentY, threshold: thresholdData.I_YPhase },
+        { id: 'I_BPhase', current: energyData.currentB, threshold: thresholdData.I_BPhase }
+      ];
+
+      const newAlertStatus = {};
+      let stateChanged = false;
+
+      for (const phase of phases) {
+        if (!phase.current || !phase.threshold) continue;
+
+        const isBreached = phase.current >= phase.threshold;
+        const wasBreached = lastAlertState.current[phase.id];
+
+        newAlertStatus[phase.id] = isBreached;
+
+        if (isBreached !== wasBreached) {
+          stateChanged = true;
+          lastAlertState.current[phase.id] = isBreached;
+          console.log(`🚨 Alert state changed for ${phase.id}: ${isBreached ? 'BREACHED' : 'RECOVERED'}`);
+        }
+      }
+
+      setAlertStatus(newAlertStatus);
+
+      // Trigger backend on state change
+      if (stateChanged) {
+        console.log('🔔 Triggering backend alert Lambda...');
+        try {
+          await fetch('https://mt9vt4fvcf.execute-api.ap-south-1.amazonaws.com/S1/R2', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' }
+          });
+        } catch (err) {
+          console.error('Backend trigger failed:', err);
+        }
+      }
+
+    } catch (err) {
+      console.error('Alert check error:', err);
+    }
+  }, [energyData.currentR, energyData.currentY, energyData.currentB, 
+      thresholdData.I_RPhase, thresholdData.I_YPhase, thresholdData.I_BPhase]);
+
   // Fetch threshold data ONLY on initial component mount
   useEffect(() => {
     fetchThresholdData();
@@ -476,6 +535,11 @@ const Container = ({ children }) => {
   useEffect(() => {
     fetchAlertLogData(alertLogCount);
   }, [fetchAlertLogData, alertLogCount]);
+
+  // ⭐ NEW: Continuous threshold checking
+  useEffect(() => {
+    checkThresholdBreaches();
+  }, [checkThresholdBreaches]);
 
   // Handle datetime input events
   const handleDateTimeEvents = (ref, isFromDate = true) => {
@@ -571,10 +635,10 @@ const Container = ({ children }) => {
     alertLogLoading,
     alertLogCount,
     setAlertLogCount,
-    fetchAlertLogData
+    fetchAlertLogData,
+    alertStatus  // ⭐ NEW: Add alertStatus to props
   };
 
-  // Pass props to children via render prop pattern
   return typeof children === 'function' ? children(props) : null;
 };
 

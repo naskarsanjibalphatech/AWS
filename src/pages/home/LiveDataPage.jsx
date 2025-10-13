@@ -14,7 +14,9 @@ const LiveDataPage = (props) => {
     energyData,
     deviceOnline,
     lastUpdate,
-    error
+    error,
+    thresholdData,  // ⭐ ADD THIS
+    alertStatus     // ⭐ ADD THIS
   } = props;
 
   const formatDateTime = (timestamp) => {
@@ -87,14 +89,16 @@ const LiveDataPage = (props) => {
           </div>
         </div>
 
-        {/* Live Data Component */}
+        {/* Live Data Component - ⭐ WITH NEW PROPS */}
         <LiveData 
           realtimeRef={React.createRef()}
           darkMode={darkMode}
           energyData={energyData}
+          thresholdData={thresholdData}  // ⭐ ADD THIS
+          alertStatus={alertStatus}      // ⭐ ADD THIS
         />
       </main>
-      <Footer darkMode={darkMode} /> {/* ADD THIS */}
+      <Footer darkMode={darkMode} />
     </div>
   );
 };
