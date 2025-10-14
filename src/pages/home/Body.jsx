@@ -23,11 +23,11 @@ const PLCDashboard = () => {
 
   // New APIs
   const TRIGGER_API =
-    "https://qff7i31wg6.execute-api.ap-south-1.amazonaws.com/CLOUD_TO_DEVICE_HOMEproject/";
+    "https://qff7i31wg6.execute-api.ap-south-1.amazonaws.com/CLOUD_TO_DEVICE_HOMEproject";
   const READ_API =
-    "https://nxt65br0i9.execute-api.ap-south-1.amazonaws.com/Read_dataFrom_db_home_project/";
+    "https://nxt65br0i9.execute-api.ap-south-1.amazonaws.com/Read_dataFrom_db_home_project";
   const WRITE_API =
-    "https://yazjquvlb2.execute-api.ap-south-1.amazonaws.com/WRITE_HOME-PROJECT/";
+    "https://yazjquvlb2.execute-api.ap-south-1.amazonaws.com/WRITE_HOME-PROJECT";
 
   // Trigger API
   const triggerDataUpdate = async () => {

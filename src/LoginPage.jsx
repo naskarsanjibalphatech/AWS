@@ -8,8 +8,8 @@ const LoginPage = ({ onLoginSuccess }) => {
   const [error, setError] = useState('');
 
   // **Here's where you set your secret words!**
-  const SECRET_USER_ID = 'PL@100';
-  const SECRET_PASSWORD = 'PL@100';
+  const SECRET_USER_ID = 'Office';
+  const SECRET_PASSWORD = 'Office@100';
 
   const handleLogin = () => {
    if (userId === SECRET_USER_ID && password === SECRET_PASSWORD) {
