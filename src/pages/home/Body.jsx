@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback } from "react";
 import {
   Power,
@@ -6,7 +5,6 @@ import {
   RotateCcw,
   Wifi,
   WifiOff,
-  Clock,
   Activity,
   AlertCircle,
   Settings,
@@ -20,8 +18,9 @@ const PLCDashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [buttonStates, setButtonStates] = useState({});
+  const [kwhValue, setKwhValue] = useState(null); // ✅ New state for KWH
 
-  // New APIs
+  // API Endpoints
   const TRIGGER_API =
     "https://qff7i31wg6.execute-api.ap-south-1.amazonaws.com/CLOUD_TO_DEVICE_HOMEproject";
   const READ_API =
@@ -100,6 +99,22 @@ const PLCDashboard = () => {
     }
   }, []);
 
+  // ✅ Fetch KWH Value (Modbus Address 30020)
+  const fetchKwhValue = useCallback(async () => {
+    try {
+      const response = await fetch(`${READ_API}/?address=30020&last=1`);
+      const data = await response.json();
+      if (data && data.length > 0) {
+        setKwhValue(data[0].value);
+      } else {
+        setKwhValue(null);
+      }
+    } catch (err) {
+      console.warn("KWH fetch error:", err.message);
+      setKwhValue(null);
+    }
+  }, []);
+
   // Pushbutton Command
   const sendPushButtonCommand = async (
     onAddress,
@@ -131,6 +146,7 @@ const PLCDashboard = () => {
       await triggerDataUpdate();
       setTimeout(() => {
         fetchOutputStatuses();
+        fetchKwhValue(); // ✅ Update KWH also after trigger
       }, 4000);
     } catch (err) {
       setError(err.message);
@@ -143,16 +159,21 @@ const PLCDashboard = () => {
   const handleRefresh = () => {
     fetchOutputStatuses();
     fetchInputStatuses();
+    fetchKwhValue(); // ✅ Include KWH in refresh
   };
 
   useEffect(() => {
     fetchOutputStatuses();
     fetchInputStatuses();
+    fetchKwhValue(); // ✅ Initial fetch
+
     const interval = setInterval(() => {
       fetchInputStatuses();
+      fetchKwhValue();
     }, 15000);
+
     return () => clearInterval(interval);
-  }, [fetchOutputStatuses, fetchInputStatuses]);
+  }, [fetchOutputStatuses, fetchInputStatuses, fetchKwhValue]);
 
   const StatusIndicator = ({ status }) => (
     <div
@@ -230,6 +251,7 @@ const PLCDashboard = () => {
         </div>
       </div>
 
+      {/* Body */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Error Alert */}
         {error && (
@@ -245,6 +267,21 @@ const PLCDashboard = () => {
             </div>
           </div>
         )}
+
+        {/* ✅ KWH Display Section */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">
+            Energy Meter Reading
+          </h2>
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm text-center">
+            <div className="text-4xl font-bold text-blue-600">
+              {kwhValue !== null ? `${parseFloat(kwhValue).toFixed(2)} kWh` : "—"}
+            </div>
+            <p className="text-gray-500 mt-2 text-sm">
+              Modbus Address: 30020
+            </p>
+          </div>
+        </div>
 
         {/* Output Controls */}
         <div className="mb-8">
@@ -303,12 +340,7 @@ const PLCDashboard = () => {
 
                     <button
                       onClick={() =>
-                        sendPushButtonCommand(
-                          onAddress,
-                          offAddress,
-                          index,
-                          false
-                        )
+                        sendPushButtonCommand(onAddress, offAddress, index, false)
                       }
                       disabled={
                         buttonStates[`${index}_start`] ||
@@ -389,4 +421,3 @@ const PLCDashboard = () => {
 };
 
 export default PLCDashboard;
-
