@@ -1,5 +1,6 @@
 import React from 'react';
-import { FileText, Filter } from 'lucide-react';
+import { FileText, Filter, Download } from 'lucide-react';
+import { generateHistoricalReportPDF } from '../utils/pdfGenerator';
 
 const HistoricalReport = ({ 
   reportsRef, 
@@ -44,6 +45,11 @@ const HistoricalReport = ({
     if (tag === 'voltageB' || tag === 'currentB') return '#3b82f6';
     if (tag === 'kwh') return '#10b981';
     return '#6366f1';
+  };
+
+  // Simple handler that calls the PDF utility
+  const handleDownloadPDF = () => {
+    generateHistoricalReportPDF(reportData, reportConfig, fromDateRef, toDateRef);
   };
 
   return (
@@ -141,10 +147,18 @@ const HistoricalReport = ({
             ? '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)' 
             : undefined
         }}>
-          <div className={`p-4 border-b ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
+          <div className={`p-4 border-b flex justify-between items-center ${darkMode ? 'border-gray-600' : 'border-gray-200'}`}>
             <h3 className={`text-lg font-semibold ${darkMode ? 'text-white' : 'text-gray-900'}`}>
               {getTagDisplayName(reportConfig.tag)} - Data Table
             </h3>
+            {/* Download PDF Button */}
+            <button
+              onClick={handleDownloadPDF}
+              className="flex items-center space-x-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-md transition-colors transform hover:scale-105 shadow-md"
+            >
+              <Download className="h-4 w-4" />
+              <span>Download PDF</span>
+            </button>
           </div>
           <div className="overflow-x-auto max-h-96">
             <table className={`min-w-full divide-y ${darkMode ? 'divide-gray-600' : 'divide-gray-200'}`}>
