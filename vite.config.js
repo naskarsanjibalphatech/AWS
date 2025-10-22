@@ -1,7 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -9,13 +8,16 @@ export default defineConfig({
       src: "/src",
     },
   },
-  // 👇 Prevent Amplify build from breaking on jspdf-autotable
+
+  // ✅ Allow Amplify to build even when jspdf is browser-only
   optimizeDeps: {
-    exclude: ["jspdf", "jspdf-autotable"], // skip pre-bundling these browser-only libs
+    include: ["jspdf", "jspdf-autotable"], // ensure they exist in node_modules for dynamic import
   },
+
   build: {
     rollupOptions: {
-      external: ["jspdf", "jspdf-autotable"], // tell Rollup not to resolve them
+      // ✅ Do NOT externalize — let Rollup know these are browser libs
+      external: [],
     },
   },
 });

@@ -4,61 +4,70 @@
  */
 export const generateHistoricalReportPDF = async (reportData, reportConfig, fromDateRef, toDateRef) => {
   try {
-    // ✅ Lazy import (fixes AWS Amplify Rollup error)
-    const { default: jsPDF } = await import('jspdf');
-    const { default: autoTable } = await import('jspdf-autotable');
+    // ✅ Load only in browser to prevent Amplify SSR build error
+    if (typeof window === "undefined") {
+      console.warn("PDF generation skipped: running in non-browser environment");
+      return;
+    }
 
-    const doc = new jsPDF('p', 'mm', 'a4');
+    // ✅ Lazy import modules (runtime only)
+    const jsPDFModule = await import("jspdf");
+    const autoTableModule = await import("jspdf-autotable");
+
+    const jsPDF = jsPDFModule.default;
+    const autoTable = autoTableModule.default;
+
+    const doc = new jsPDF("p", "mm", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
     // Helper functions
     const getTagDisplayName = (tag) => {
       const tagNames = {
-        voltageR: 'R Phase Voltage',
-        voltageY: 'Y Phase Voltage',
-        voltageB: 'B Phase Voltage',
-        currentR: 'R Phase Current',
-        currentY: 'Y Phase Current',
-        currentB: 'B Phase Current',
-        kwh: 'Energy (kWh)',
+        voltageR: "R Phase Voltage",
+        voltageY: "Y Phase Voltage",
+        voltageB: "B Phase Voltage",
+        currentR: "R Phase Current",
+        currentY: "Y Phase Current",
+        currentB: "B Phase Current",
+        kwh: "Energy (kWh)",
       };
       return tagNames[tag] || tag;
     };
 
     const getTagUnit = (tag) => {
-      if (tag.includes('voltage')) return 'V';
-      if (tag.includes('current')) return 'A';
-      if (tag === 'kwh') return 'kWh';
-      return '';
+      if (tag.includes("voltage")) return "V";
+      if (tag.includes("current")) return "A";
+      if (tag === "kwh") return "kWh";
+      return "";
     };
 
     // ===== HEADER SECTION =====
     doc.setFillColor(30, 58, 138); // Dark blue
-    doc.rect(0, 0, pageWidth, 35, 'F');
+    doc.rect(0, 0, pageWidth, 35, "F");
 
     doc.setFontSize(22);
     doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.text('CLOUD SCADA', pageWidth / 2, 12, { align: 'center' });
+    doc.setFont("helvetica", "bold");
+    doc.text("CLOUD SCADA", pageWidth / 2, 12, { align: "center" });
 
     doc.setFontSize(14);
-    doc.setFont('helvetica', 'normal');
-    doc.text('Supervisory Control and Data Acquisition', pageWidth / 2, 19, { align: 'center' });
+    doc.setFont("helvetica", "normal");
+    doc.text("Supervisory Control and Data Acquisition", pageWidth / 2, 19, { align: "center" });
 
     doc.setFontSize(11);
     doc.setTextColor(220, 220, 220);
-    doc.text('KISWOK INDUSTRIES', pageWidth / 2, 26, { align: 'center' });
+    doc.text("KISWOK INDUSTRIES", pageWidth / 2, 26, { align: "center" });
 
     doc.setFontSize(8);
     doc.setTextColor(180, 180, 180);
-    doc.text('Developed by Alphatech Solutions', pageWidth / 2, 31, { align: 'center' });
+    doc.text("Developed by Alphatech Solutions", pageWidth / 2, 31, { align: "center" });
 
     // ===== REPORT INFO SECTION =====
     doc.setFontSize(16);
     doc.setTextColor(30, 58, 138);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Historical Report', 14, 45);
+    doc.setFont("helvetica", "bold");
+    doc.text("Historical Report", 14, 45);
 
     doc.setDrawColor(200, 200, 200);
     doc.setLineWidth(0.5);
@@ -66,22 +75,22 @@ export const generateHistoricalReportPDF = async (reportData, reportConfig, from
 
     doc.setFontSize(10);
     doc.setTextColor(60, 60, 60);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Parameter:', 18, 57);
-    doc.text('From:', 18, 64);
-    doc.text('To:', 18, 71);
-    doc.text('Generated:', 18, 78);
+    doc.setFont("helvetica", "bold");
+    doc.text("Parameter:", 18, 57);
+    doc.text("From:", 18, 64);
+    doc.text("To:", 18, 71);
+    doc.text("Generated:", 18, 78);
 
-    doc.setFont('helvetica', 'normal');
+    doc.setFont("helvetica", "normal");
     doc.setTextColor(40, 40, 40);
     doc.text(getTagDisplayName(reportConfig.tag), 42, 57);
-    doc.text(fromDateRef.current?.value?.replace('T', ' ') || 'N/A', 42, 64);
-    doc.text(toDateRef.current?.value?.replace('T', ' ') || 'N/A', 42, 71);
-    doc.text(new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }), 42, 78);
+    doc.text(fromDateRef.current?.value?.replace("T", " ") || "N/A", 42, 64);
+    doc.text(toDateRef.current?.value?.replace("T", " ") || "N/A", 42, 71);
+    doc.text(new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata" }), 42, 78);
 
-    doc.setFont('helvetica', 'bold');
+    doc.setFont("helvetica", "bold");
     doc.setTextColor(30, 58, 138);
-    doc.text(`Total Records: ${reportData.length}`, pageWidth - 18, 57, { align: 'right' });
+    doc.text(`Total Records: ${reportData.length}`, pageWidth - 18, 57, { align: "right" });
 
     // ===== DATA TABLE =====
     const tableData = reportData
@@ -95,16 +104,16 @@ export const generateHistoricalReportPDF = async (reportData, reportConfig, from
       ]);
 
     autoTable(doc, {
-      head: [['Timestamp', 'Parameter', 'Value', 'Unit']],
+      head: [["Timestamp", "Parameter", "Value", "Unit"]],
       body: tableData,
       startY: 85,
-      theme: 'grid',
+      theme: "grid",
       headStyles: {
         fillColor: [30, 58, 138],
         textColor: [255, 255, 255],
         fontSize: 10,
-        fontStyle: 'bold',
-        halign: 'center',
+        fontStyle: "bold",
+        halign: "center",
       },
       styles: {
         fontSize: 9,
@@ -113,16 +122,16 @@ export const generateHistoricalReportPDF = async (reportData, reportConfig, from
         lineWidth: 0.1,
       },
       columnStyles: {
-        0: { halign: 'left' },
-        1: { halign: 'left' },
-        2: { halign: 'right', fontStyle: 'bold' },
-        3: { halign: 'center' },
+        0: { halign: "left" },
+        1: { halign: "left" },
+        2: { halign: "right", fontStyle: "bold" },
+        3: { halign: "center" },
       },
       alternateRowStyles: {
         fillColor: [245, 247, 250],
       },
       margin: { left: 14, right: 14 },
-      tableWidth: 'auto',
+      tableWidth: "auto",
       didDrawPage: function (data) {
         const footerY = pageHeight - 15;
         doc.setDrawColor(200, 200, 200);
@@ -131,14 +140,14 @@ export const generateHistoricalReportPDF = async (reportData, reportConfig, from
 
         doc.setFontSize(9);
         doc.setTextColor(100, 100, 100);
-        doc.setFont('helvetica', 'normal');
+        doc.setFont("helvetica", "normal");
         const pageText = `Page ${data.pageNumber} of ${doc.internal.getNumberOfPages()}`;
-        doc.text(pageText, pageWidth / 2, footerY, { align: 'center' });
+        doc.text(pageText, pageWidth / 2, footerY, { align: "center" });
 
         doc.setFontSize(8);
         doc.setTextColor(80, 80, 80);
-        doc.text('Alphatech Solutions', 14, footerY);
-        doc.text('contact@alphatechsolutions.in', pageWidth - 14, footerY, { align: 'right' });
+        doc.text("Alphatech Solutions", 14, footerY);
+        doc.text("contact@alphatechsolutions.in", pageWidth - 14, footerY, { align: "right" });
       },
     });
 
@@ -148,10 +157,10 @@ export const generateHistoricalReportPDF = async (reportData, reportConfig, from
     if (finalY < pageHeight - 40) {
       doc.setFontSize(10);
       doc.setTextColor(60, 60, 60);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Report Summary:', 14, finalY + 10);
+      doc.setFont("helvetica", "bold");
+      doc.text("Report Summary:", 14, finalY + 10);
 
-      doc.setFont('helvetica', 'normal');
+      doc.setFont("helvetica", "normal");
       doc.setFontSize(9);
       doc.text(
         `This report contains ${reportData.length} data points for ${getTagDisplayName(reportConfig.tag)}.`,
@@ -159,9 +168,9 @@ export const generateHistoricalReportPDF = async (reportData, reportConfig, from
         finalY + 17
       );
       doc.text(
-        `Data collected from ${fromDateRef.current?.value?.replace('T', ' ')} to ${toDateRef.current?.value?.replace(
-          'T',
-          ' '
+        `Data collected from ${fromDateRef.current?.value?.replace("T", " ")} to ${toDateRef.current?.value?.replace(
+          "T",
+          " "
         )}.`,
         14,
         finalY + 23
@@ -169,12 +178,12 @@ export const generateHistoricalReportPDF = async (reportData, reportConfig, from
     }
 
     // ===== SAVE PDF =====
-    const dateStr = new Date().toISOString().split('T')[0];
-    const timeStr = new Date().toTimeString().split(' ')[0].replace(/:/g, '-');
-    const fileName = `KISWOK_${getTagDisplayName(reportConfig.tag).replace(/\s+/g, '_')}_${dateStr}_${timeStr}.pdf`;
+    const dateStr = new Date().toISOString().split("T")[0];
+    const timeStr = new Date().toTimeString().split(" ")[0].replace(/:/g, "-");
+    const fileName = `KISWOK_${getTagDisplayName(reportConfig.tag).replace(/\s+/g, "_")}_${dateStr}_${timeStr}.pdf`;
     doc.save(fileName);
   } catch (err) {
-    console.error('Error generating historical report PDF:', err);
+    console.error("Error generating historical report PDF:", err);
   }
 };
 
@@ -183,29 +192,36 @@ export const generateHistoricalReportPDF = async (reportData, reportConfig, from
  */
 export const generateAlertLogPDF = async (alertData) => {
   try {
-    const { default: jsPDF } = await import('jspdf');
-    const { default: autoTable } = await import('jspdf-autotable');
+    if (typeof window === "undefined") {
+      console.warn("PDF generation skipped: running in non-browser environment");
+      return;
+    }
 
-    const doc = new jsPDF('p', 'mm', 'a4');
+    const jsPDFModule = await import("jspdf");
+    const autoTableModule = await import("jspdf-autotable");
+    const jsPDF = jsPDFModule.default;
+    const autoTable = autoTableModule.default;
+
+    const doc = new jsPDF("p", "mm", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
 
     // Header
     doc.setFillColor(30, 58, 138);
-    doc.rect(0, 0, pageWidth, 35, 'F');
+    doc.rect(0, 0, pageWidth, 35, "F");
 
     doc.setFontSize(22);
     doc.setTextColor(255, 255, 255);
-    doc.setFont('helvetica', 'bold');
-    doc.text('CLOUD SCADA - Alert Log', pageWidth / 2, 15, { align: 'center' });
+    doc.setFont("helvetica", "bold");
+    doc.text("CLOUD SCADA - Alert Log", pageWidth / 2, 15, { align: "center" });
 
     doc.setFontSize(11);
     doc.setTextColor(220, 220, 220);
-    doc.text('KISWOK INDUSTRIES', pageWidth / 2, 23, { align: 'center' });
+    doc.text("KISWOK INDUSTRIES", pageWidth / 2, 23, { align: "center" });
 
     doc.setFontSize(8);
     doc.setTextColor(180, 180, 180);
-    doc.text('Developed by Alphatech Solutions', pageWidth / 2, 30, { align: 'center' });
+    doc.text("Developed by Alphatech Solutions", pageWidth / 2, 30, { align: "center" });
 
     const tableData = alertData.map((alert) => [
       alert.timestamp,
@@ -216,30 +232,30 @@ export const generateAlertLogPDF = async (alertData) => {
     ]);
 
     autoTable(doc, {
-      head: [['Timestamp', 'Parameter', 'Value', 'Threshold', 'Status']],
+      head: [["Timestamp", "Parameter", "Value", "Threshold", "Status"]],
       body: tableData,
       startY: 45,
-      theme: 'grid',
+      theme: "grid",
       headStyles: {
         fillColor: [239, 68, 68],
         textColor: [255, 255, 255],
         fontSize: 10,
-        fontStyle: 'bold',
-        halign: 'center',
+        fontStyle: "bold",
+        halign: "center",
       },
       styles: {
         fontSize: 9,
         cellPadding: 4,
       },
       columnStyles: {
-        0: { halign: 'left' },
-        1: { halign: 'left' },
-        2: { halign: 'right', fontStyle: 'bold' },
-        3: { halign: 'right', fontStyle: 'bold' },
-        4: { halign: 'center' },
+        0: { halign: "left" },
+        1: { halign: "left" },
+        2: { halign: "right", fontStyle: "bold" },
+        3: { halign: "right", fontStyle: "bold" },
+        4: { halign: "center" },
       },
       margin: { left: 14, right: 14 },
-      tableWidth: 'auto',
+      tableWidth: "auto",
       didDrawPage: function (data) {
         const footerY = pageHeight - 15;
         doc.setDrawColor(200, 200, 200);
@@ -248,18 +264,18 @@ export const generateAlertLogPDF = async (alertData) => {
         doc.setFontSize(9);
         doc.setTextColor(100, 100, 100);
         const pageText = `Page ${data.pageNumber} of ${doc.internal.getNumberOfPages()}`;
-        doc.text(pageText, pageWidth / 2, footerY, { align: 'center' });
+        doc.text(pageText, pageWidth / 2, footerY, { align: "center" });
 
         doc.setFontSize(8);
         doc.setTextColor(80, 80, 80);
-        doc.text('Alphatech Solutions', 14, footerY);
-        doc.text('contact@alphatechsolutions.in', pageWidth - 14, footerY, { align: 'right' });
+        doc.text("Alphatech Solutions", 14, footerY);
+        doc.text("contact@alphatechsolutions.in", pageWidth - 14, footerY, { align: "right" });
       },
     });
 
-    const dateStr = new Date().toISOString().split('T')[0];
+    const dateStr = new Date().toISOString().split("T")[0];
     doc.save(`KISWOK_Alert_Log_${dateStr}.pdf`);
   } catch (err) {
-    console.error('Error generating alert log PDF:', err);
+    console.error("Error generating alert log PDF:", err);
   }
 };
