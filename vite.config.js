@@ -8,10 +8,12 @@ export default defineConfig({
       src: "/src",
     },
   },
+  optimizeDeps: {
+    include: ["jspdf", "jspdf-autotable"],
+  },
   build: {
-    rollupOptions: {
-      // ⚠️ Externalize browser-only libs so Rollup doesn't try to bundle them
-      external: ["jspdf", "jspdf-autotable"],
+    commonjsOptions: {
+      include: [/jspdf/, /jspdf-autotable/, /node_modules/],
     },
   },
 });

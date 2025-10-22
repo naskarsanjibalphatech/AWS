@@ -11,7 +11,7 @@ export const generateHistoricalReportPDF = async (reportData, reportConfig, from
 
     // Lazy load browser-only libraries
     const { default: jsPDF } = await import("jspdf");
-    const { default: autoTable } = await import("jspdf-autotable");
+    await import("jspdf-autotable");
 
     const doc = new jsPDF("p", "mm", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -99,7 +99,7 @@ export const generateHistoricalReportPDF = async (reportData, reportConfig, from
         getTagUnit(reportConfig.tag),
       ]);
 
-    autoTable(doc, {
+    doc.autoTable({
       head: [["Timestamp", "Parameter", "Value", "Unit"]],
       body: tableData,
       startY: 85,
@@ -177,7 +177,7 @@ export const generateAlertLogPDF = async (alertData) => {
     if (typeof window === "undefined") return;
 
     const { default: jsPDF } = await import("jspdf");
-    const { default: autoTable } = await import("jspdf-autotable");
+    await import("jspdf-autotable");
 
     const doc = new jsPDF("p", "mm", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -207,7 +207,7 @@ export const generateAlertLogPDF = async (alertData) => {
       alert.status,
     ]);
 
-    autoTable(doc, {
+    doc.autoTable({
       head: [["Timestamp", "Parameter", "Value", "Threshold", "Status"]],
       body: tableData,
       startY: 45,
