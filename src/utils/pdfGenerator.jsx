@@ -10,8 +10,13 @@ export const generateHistoricalReportPDF = async (reportData, reportConfig, from
     if (typeof window === "undefined") return;
 
     // Lazy load browser-only libraries
-    const { default: jsPDF } = await import("jspdf");
-    await import("jspdf-autotable");
+    const jsPDFModule = await import("jspdf");
+    const jsPDF = jsPDFModule.default;
+    
+    // Import and apply jspdf-autotable plugin
+    const autoTableModule = await import("jspdf-autotable");
+    const { applyPlugin } = autoTableModule;
+    applyPlugin(jsPDF);
 
     const doc = new jsPDF("p", "mm", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -176,8 +181,14 @@ export const generateAlertLogPDF = async (alertData) => {
   try {
     if (typeof window === "undefined") return;
 
-    const { default: jsPDF } = await import("jspdf");
-    await import("jspdf-autotable");
+    // Lazy load browser-only libraries
+    const jsPDFModule = await import("jspdf");
+    const jsPDF = jsPDFModule.default;
+    
+    // Import and apply jspdf-autotable plugin
+    const autoTableModule = await import("jspdf-autotable");
+    const { applyPlugin } = autoTableModule;
+    applyPlugin(jsPDF);
 
     const doc = new jsPDF("p", "mm", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
