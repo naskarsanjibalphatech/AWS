@@ -8,7 +8,4 @@ export default defineConfig({
       src: "/src",
     },
   },
-  optimizeDeps: {
-    include: ["jspdf", "jspdf-autotable"],
-  },
 });

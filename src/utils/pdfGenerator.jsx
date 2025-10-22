@@ -1,22 +1,16 @@
 /**
  * pdfGenerator.jsx
  * Generate Professional PDF Reports for KISWOK Industries
- * SSR-safe for AWS Amplify
+ * Works with AWS Amplify and Vite
  */
+
+import { jsPDF } from "jspdf";
+import autoTable from "jspdf-autotable";
 
 export const generateHistoricalReportPDF = async (reportData, reportConfig, fromDateRef, toDateRef) => {
   try {
     // ⚠️ Only run in browser
     if (typeof window === "undefined") return;
-
-    // Lazy load browser-only libraries
-    const jsPDFModule = await import("jspdf");
-    const jsPDF = jsPDFModule.default;
-    
-    // Import and apply jspdf-autotable plugin
-    const autoTableModule = await import("jspdf-autotable");
-    const { applyPlugin } = autoTableModule;
-    applyPlugin(jsPDF);
 
     const doc = new jsPDF("p", "mm", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
@@ -104,7 +98,8 @@ export const generateHistoricalReportPDF = async (reportData, reportConfig, from
         getTagUnit(reportConfig.tag),
       ]);
 
-    doc.autoTable({
+    // Use autoTable as a function, not a method
+    autoTable(doc, {
       head: [["Timestamp", "Parameter", "Value", "Unit"]],
       body: tableData,
       startY: 85,
@@ -181,15 +176,6 @@ export const generateAlertLogPDF = async (alertData) => {
   try {
     if (typeof window === "undefined") return;
 
-    // Lazy load browser-only libraries
-    const jsPDFModule = await import("jspdf");
-    const jsPDF = jsPDFModule.default;
-    
-    // Import and apply jspdf-autotable plugin
-    const autoTableModule = await import("jspdf-autotable");
-    const { applyPlugin } = autoTableModule;
-    applyPlugin(jsPDF);
-
     const doc = new jsPDF("p", "mm", "a4");
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
@@ -218,7 +204,8 @@ export const generateAlertLogPDF = async (alertData) => {
       alert.status,
     ]);
 
-    doc.autoTable({
+    // Use autoTable as a function, not a method
+    autoTable(doc, {
       head: [["Timestamp", "Parameter", "Value", "Threshold", "Status"]],
       body: tableData,
       startY: 45,
