@@ -9,4 +9,13 @@ export default defineConfig({
       src: "/src",
     },
   },
+  // 👇 Prevent Amplify build from breaking on jspdf-autotable
+  optimizeDeps: {
+    exclude: ["jspdf", "jspdf-autotable"], // skip pre-bundling these browser-only libs
+  },
+  build: {
+    rollupOptions: {
+      external: ["jspdf", "jspdf-autotable"], // tell Rollup not to resolve them
+    },
+  },
 });
