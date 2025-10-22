@@ -8,16 +8,10 @@ export default defineConfig({
       src: "/src",
     },
   },
-
-  // ✅ Allow Amplify to build even when jspdf is browser-only
-  optimizeDeps: {
-    include: ["jspdf", "jspdf-autotable"], // ensure they exist in node_modules for dynamic import
-  },
-
   build: {
     rollupOptions: {
-      // ✅ Do NOT externalize — let Rollup know these are browser libs
-      external: [],
+      // ⚠️ Externalize browser-only libs so Rollup doesn't try to bundle them
+      external: ["jspdf", "jspdf-autotable"],
     },
   },
 });
