@@ -18,7 +18,19 @@ const PLCDashboard = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [buttonStates, setButtonStates] = useState({});
-  const [kwhValue, setKwhValue] = useState(null); // ✅ New state for KWH
+  const [kwhValue, setKwhValue] = useState(null);
+
+  // Output Names
+  const outputNames = [
+    "AC",                // Output0
+    "RIGHT LIGHT",       // Output1
+    "LEFT LIGHT",        // Output2
+    "FAN",               // Output3
+    "FRONT & BACK LAMP", // Output4
+    "SPARE 5",           // Output5
+    "SPARE 6",           // Output6
+    "SPARE 7",           // Output7
+  ];
 
   // API Endpoints
   const TRIGGER_API =
@@ -28,7 +40,9 @@ const PLCDashboard = () => {
   const WRITE_API =
     "https://yazjquvlb2.execute-api.ap-south-1.amazonaws.com/WRITE_HOME-PROJECT";
 
-  // Trigger API
+  const KWH_TRIGGER_API =
+    "https://2nqtt3api6.execute-api.ap-south-1.amazonaws.com/AwsToUsr_For_kwh_HA/";
+
   const triggerDataUpdate = async () => {
     try {
       await fetch(`${TRIGGER_API}/`, {
@@ -40,7 +54,6 @@ const PLCDashboard = () => {
     }
   };
 
-  // Fetch Outputs
   const fetchOutputStatuses = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -78,7 +91,6 @@ const PLCDashboard = () => {
     }
   }, []);
 
-  // Fetch Inputs
   const fetchInputStatuses = useCallback(async () => {
     try {
       const responses = await Promise.all(
@@ -99,10 +111,9 @@ const PLCDashboard = () => {
     }
   }, []);
 
-  // ✅ Fetch KWH Value (Modbus Address 30020)
   const fetchKwhValue = useCallback(async () => {
     try {
-      const response = await fetch(`${READ_API}/?address=30020&last=1`);
+      const response = await fetch(`${READ_API}/?address=30022&last=1`);
       const data = await response.json();
       if (data && data.length > 0) {
         setKwhValue(data[0].value);
@@ -115,7 +126,6 @@ const PLCDashboard = () => {
     }
   }, []);
 
-  // Pushbutton Command
   const sendPushButtonCommand = async (
     onAddress,
     offAddress,
@@ -146,7 +156,7 @@ const PLCDashboard = () => {
       await triggerDataUpdate();
       setTimeout(() => {
         fetchOutputStatuses();
-        fetchKwhValue(); // ✅ Update KWH also after trigger
+        fetchKwhValue();
       }, 4000);
     } catch (err) {
       setError(err.message);
@@ -155,17 +165,16 @@ const PLCDashboard = () => {
     }
   };
 
-  // Refresh Handler
   const handleRefresh = () => {
     fetchOutputStatuses();
     fetchInputStatuses();
-    fetchKwhValue(); // ✅ Include KWH in refresh
+    fetchKwhValue();
   };
 
   useEffect(() => {
     fetchOutputStatuses();
     fetchInputStatuses();
-    fetchKwhValue(); // ✅ Initial fetch
+    fetchKwhValue();
 
     const interval = setInterval(() => {
       fetchInputStatuses();
@@ -174,6 +183,19 @@ const PLCDashboard = () => {
 
     return () => clearInterval(interval);
   }, [fetchOutputStatuses, fetchInputStatuses, fetchKwhValue]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetch(KWH_TRIGGER_API, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+        .then(() => console.log("✅ KWH auto-triggered"))
+        .catch((err) => console.warn("⚠️ KWH trigger error:", err.message));
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const StatusIndicator = ({ status }) => (
     <div
@@ -196,7 +218,6 @@ const PLCDashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16 sm:h-20">
@@ -208,9 +229,7 @@ const PLCDashboard = () => {
                 <h1 className="text-lg sm:text-xl font-bold text-gray-900">
                   PLC Dashboard
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-500">
-                  Cloud SCADA System
-                </p>
+                <p className="text-xs sm:text-sm text-gray-500">Cloud SCADA System</p>
               </div>
             </div>
 
@@ -222,14 +241,8 @@ const PLCDashboard = () => {
                     : "bg-red-100 text-red-800"
                 }`}
               >
-                {deviceOnline ? (
-                  <Wifi className="h-4 w-4" />
-                ) : (
-                  <WifiOff className="h-4 w-4" />
-                )}
-                <span className="hidden sm:inline">
-                  {deviceOnline ? "Online" : "Offline"}
-                </span>
+                {deviceOnline ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
+                <span className="hidden sm:inline">{deviceOnline ? "Online" : "Offline"}</span>
               </div>
 
               <button
@@ -237,9 +250,7 @@ const PLCDashboard = () => {
                 disabled={isLoading}
                 className="flex items-center space-x-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
-                <RotateCcw
-                  className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
-                />
+                <RotateCcw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
                 <span className="hidden sm:inline">Refresh</span>
               </button>
 
@@ -251,43 +262,31 @@ const PLCDashboard = () => {
         </div>
       </div>
 
-      {/* Body */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        {/* Error Alert */}
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex items-center space-x-3">
               <AlertCircle className="h-5 w-5 text-red-600" />
               <div>
-                <h3 className="text-sm font-medium text-red-800">
-                  System Error
-                </h3>
+                <h3 className="text-sm font-medium text-red-800">System Error</h3>
                 <p className="text-sm text-red-700 mt-1">{error}</p>
               </div>
             </div>
           </div>
         )}
 
-        {/* ✅ KWH Display Section */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">
-            Energy Meter Reading
-          </h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Energy Meter Reading</h2>
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm text-center">
             <div className="text-4xl font-bold text-blue-600">
-              {kwhValue !== null ? `${parseFloat(kwhValue).toFixed(2)} kWh` : "—"}
+              {kwhValue !== null ? `${parseFloat(kwhValue).toFixed(2)} AMP` : "—"}
             </div>
-            <p className="text-gray-500 mt-2 text-sm">
-              Modbus Address: 30020
-            </p>
+            <p className="text-gray-500 mt-2 text-sm">Modbus Address: 30022</p>
           </div>
         </div>
 
-        {/* Output Controls */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">
-            Output Controls
-          </h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">Output Controls</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
             {outputStatuses.map((status, index) => {
               const onAddress = 1000 + index * 2;
@@ -298,12 +297,8 @@ const PLCDashboard = () => {
                   className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">
-                      Output {index}
-                    </h3>
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                      {index}
-                    </span>
+                    <h3 className="text-lg font-semibold text-gray-900">{outputNames[index] || `Output ${index}`}</h3>
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">{index}</span>
                   </div>
 
                   <div className="flex justify-center mb-6">
@@ -313,9 +308,7 @@ const PLCDashboard = () => {
                   <div className="text-center mb-4">
                     <span
                       className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                        status === 1
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
+                        status === 1 ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
                       }`}
                     >
                       {status === 1 ? "ACTIVE" : "INACTIVE"}
@@ -324,14 +317,8 @@ const PLCDashboard = () => {
 
                   <div className="space-y-2">
                     <button
-                      onClick={() =>
-                        sendPushButtonCommand(onAddress, offAddress, index, true)
-                      }
-                      disabled={
-                        buttonStates[`${index}_start`] ||
-                        buttonStates[`${index}_stop`] ||
-                        !deviceOnline
-                      }
+                      onClick={() => sendPushButtonCommand(onAddress, offAddress, index, true)}
+                      disabled={buttonStates[`${index}_start`] || buttonStates[`${index}_stop`] || !deviceOnline}
                       className="w-full flex items-center justify-center px-4 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white rounded-lg font-medium transition-colors"
                     >
                       <Power className="h-4 w-4 mr-2" />
@@ -339,14 +326,8 @@ const PLCDashboard = () => {
                     </button>
 
                     <button
-                      onClick={() =>
-                        sendPushButtonCommand(onAddress, offAddress, index, false)
-                      }
-                      disabled={
-                        buttonStates[`${index}_start`] ||
-                        buttonStates[`${index}_stop`] ||
-                        !deviceOnline
-                      }
+                      onClick={() => sendPushButtonCommand(onAddress, offAddress, index, false)}
+                      disabled={buttonStates[`${index}_start`] || buttonStates[`${index}_stop`] || !deviceOnline}
                       className="w-full flex items-center justify-center px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 text-white rounded-lg font-medium transition-colors"
                     >
                       <Square className="h-4 w-4 mr-2" />
@@ -359,11 +340,8 @@ const PLCDashboard = () => {
           </div>
         </div>
 
-        {/* Input Status */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">
-            Input Status
-          </h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">Input Status</h2>
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-8 gap-3">
             {inputStatuses.map((status, index) => (
               <div
@@ -371,9 +349,7 @@ const PLCDashboard = () => {
                 className="bg-white border border-gray-200 rounded-lg p-3 text-center shadow-sm hover:shadow-md transition-all hover:scale-105"
               >
                 <div className="mb-2">
-                  <span className="text-xs text-gray-500 font-mono">
-                    I{index}
-                  </span>
+                  <span className="text-xs text-gray-500 font-mono">I{index}</span>
                 </div>
                 <div className="flex justify-center mb-2">
                   <div
@@ -385,18 +361,12 @@ const PLCDashboard = () => {
                   >
                     <div
                       className={`w-full h-full rounded-full ${
-                        status === 1
-                          ? "bg-white bg-opacity-30 animate-pulse"
-                          : ""
+                        status === 1 ? "bg-white bg-opacity-30 animate-pulse" : ""
                       }`}
                     ></div>
                   </div>
                 </div>
-                <div
-                  className={`text-xs font-bold ${
-                    status === 1 ? "text-blue-600" : "text-gray-500"
-                  }`}
-                >
+                <div className={`text-xs font-bold ${status === 1 ? "text-blue-600" : "text-gray-500"}`}>
                   {status === 1 ? "ON" : "OFF"}
                 </div>
               </div>
@@ -404,14 +374,11 @@ const PLCDashboard = () => {
           </div>
         </div>
 
-        {/* Loading Indicator */}
         {isLoading && (
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center space-x-3">
               <div className="w-4 h-4 bg-blue-600 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-blue-800">
-                Updating system status...
-              </span>
+              <span className="text-sm font-medium text-blue-800">Updating system status...</span>
             </div>
           </div>
         )}
