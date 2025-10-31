@@ -19,17 +19,18 @@ const PLCDashboard = () => {
   const [error, setError] = useState(null);
   const [buttonStates, setButtonStates] = useState({});
   const [kwhValue, setKwhValue] = useState(null);
+  const [ampValue, setAmpValue] = useState(null); // Added for 30022 (AMP)
 
   // Output Names
   const outputNames = [
-    "AC",                // Output0
-    "RIGHT LIGHT",       // Output1
-    "LEFT LIGHT",        // Output2
-    "FAN",               // Output3
-    "FRONT & BACK LAMP", // Output4
-    "SPARE 5",           // Output5
-    "SPARE 6",           // Output6
-    "SPARE 7",           // Output7
+    "AC",
+    "RIGHT LIGHT",
+    "LEFT LIGHT",
+    "FAN",
+    "FRONT & BACK LAMP",
+    "SPARE 5",
+    "SPARE 6",
+    "SPARE 7",
   ];
 
   // API Endpoints
@@ -111,17 +112,24 @@ const PLCDashboard = () => {
     }
   }, []);
 
-  const fetchKwhValue = useCallback(async () => {
+  // ✅ NEW: fetch AMP (30022)
+  const fetchAmpValue = useCallback(async () => {
     try {
       const response = await fetch(`${READ_API}/?address=30022&last=1`);
       const data = await response.json();
-      if (data && data.length > 0) {
-        setKwhValue(data[0].value);
-      } else {
-        setKwhValue(null);
-      }
-    } catch (err) {
-      console.warn("KWH fetch error:", err.message);
+      setAmpValue(data?.[0]?.value ?? null);
+    } catch {
+      setAmpValue(null);
+    }
+  }, []);
+
+  // ✅ NEW: fetch KWH (30149)
+  const fetchKwhValue = useCallback(async () => {
+    try {
+      const response = await fetch(`${READ_API}/?address=30149&last=1`);
+      const data = await response.json();
+      setKwhValue(data?.[0]?.value ?? null);
+    } catch {
       setKwhValue(null);
     }
   }, []);
@@ -156,6 +164,7 @@ const PLCDashboard = () => {
       await triggerDataUpdate();
       setTimeout(() => {
         fetchOutputStatuses();
+        fetchAmpValue();
         fetchKwhValue();
       }, 4000);
     } catch (err) {
@@ -168,30 +177,31 @@ const PLCDashboard = () => {
   const handleRefresh = () => {
     fetchOutputStatuses();
     fetchInputStatuses();
+    fetchAmpValue();
     fetchKwhValue();
   };
 
   useEffect(() => {
     fetchOutputStatuses();
     fetchInputStatuses();
+    fetchAmpValue();
     fetchKwhValue();
 
     const interval = setInterval(() => {
       fetchInputStatuses();
+      fetchAmpValue();
       fetchKwhValue();
     }, 15000);
 
     return () => clearInterval(interval);
-  }, [fetchOutputStatuses, fetchInputStatuses, fetchKwhValue]);
+  }, [fetchOutputStatuses, fetchInputStatuses, fetchAmpValue, fetchKwhValue]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       fetch(KWH_TRIGGER_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-      })
-        .then(() => console.log("✅ KWH auto-triggered"))
-        .catch((err) => console.warn("⚠️ KWH trigger error:", err.message));
+      }).catch(() => {});
     }, 6000);
 
     return () => clearInterval(interval);
@@ -229,7 +239,9 @@ const PLCDashboard = () => {
                 <h1 className="text-lg sm:text-xl font-bold text-gray-900">
                   PLC Dashboard
                 </h1>
-                <p className="text-xs sm:text-sm text-gray-500">Cloud SCADA System</p>
+                <p className="text-xs sm:text-sm text-gray-500">
+                  Cloud SCADA System
+                </p>
               </div>
             </div>
 
@@ -241,8 +253,14 @@ const PLCDashboard = () => {
                     : "bg-red-100 text-red-800"
                 }`}
               >
-                {deviceOnline ? <Wifi className="h-4 w-4" /> : <WifiOff className="h-4 w-4" />}
-                <span className="hidden sm:inline">{deviceOnline ? "Online" : "Offline"}</span>
+                {deviceOnline ? (
+                  <Wifi className="h-4 w-4" />
+                ) : (
+                  <WifiOff className="h-4 w-4" />
+                )}
+                <span className="hidden sm:inline">
+                  {deviceOnline ? "Online" : "Offline"}
+                </span>
               </div>
 
               <button
@@ -250,7 +268,9 @@ const PLCDashboard = () => {
                 disabled={isLoading}
                 className="flex items-center space-x-2 px-3 py-1.5 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
               >
-                <RotateCcw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
+                <RotateCcw
+                  className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`}
+                />
                 <span className="hidden sm:inline">Refresh</span>
               </button>
 
@@ -263,6 +283,8 @@ const PLCDashboard = () => {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        {/* ERROR BOX */}
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex items-center space-x-3">
@@ -275,16 +297,29 @@ const PLCDashboard = () => {
           </div>
         )}
 
-        <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-3">Energy Meter Reading</h2>
+        {/* AMP PANEL (30022) */}
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Current</h2>
           <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm text-center">
             <div className="text-4xl font-bold text-blue-600">
-              {kwhValue !== null ? `${parseFloat(kwhValue).toFixed(2)} AMP` : "—"}
+              {ampValue !== null ? `${parseFloat(ampValue).toFixed(2)} AMP` : "—"}
             </div>
             <p className="text-gray-500 mt-2 text-sm">Modbus Address: 30022</p>
           </div>
         </div>
 
+        {/* ✅ NEW KWH PANEL (30149) */}
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-3">Energy (KWH)</h2>
+          <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm text-center">
+            <div className="text-4xl font-bold text-green-600">
+              {kwhValue !== null ? `${parseFloat(kwhValue).toFixed(2)} kWh` : "—"}
+            </div>
+            <p className="text-gray-500 mt-2 text-sm">Modbus Address: 30149</p>
+          </div>
+        </div>
+
+        {/* OUTPUT GRID — (UNCHANGED) */}
         <div className="mb-8">
           <h2 className="text-lg font-semibold text-gray-900 mb-6">Output Controls</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-6">
@@ -297,8 +332,12 @@ const PLCDashboard = () => {
                   className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow"
                 >
                   <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">{outputNames[index] || `Output ${index}`}</h3>
-                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">{index}</span>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {outputNames[index]}
+                    </h3>
+                    <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                      {index}
+                    </span>
                   </div>
 
                   <div className="flex justify-center mb-6">
@@ -308,7 +347,9 @@ const PLCDashboard = () => {
                   <div className="text-center mb-4">
                     <span
                       className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-                        status === 1 ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-800"
+                        status === 1
+                          ? "bg-green-100 text-green-800"
+                          : "bg-gray-100 text-gray-800"
                       }`}
                     >
                       {status === 1 ? "ACTIVE" : "INACTIVE"}
@@ -317,8 +358,14 @@ const PLCDashboard = () => {
 
                   <div className="space-y-2">
                     <button
-                      onClick={() => sendPushButtonCommand(onAddress, offAddress, index, true)}
-                      disabled={buttonStates[`${index}_start`] || buttonStates[`${index}_stop`] || !deviceOnline}
+                      onClick={() =>
+                        sendPushButtonCommand(onAddress, offAddress, index, true)
+                      }
+                      disabled={
+                        buttonStates[`${index}_start`] ||
+                        buttonStates[`${index}_stop`] ||
+                        !deviceOnline
+                      }
                       className="w-full flex items-center justify-center px-4 py-2.5 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white rounded-lg font-medium transition-colors"
                     >
                       <Power className="h-4 w-4 mr-2" />
@@ -326,8 +373,14 @@ const PLCDashboard = () => {
                     </button>
 
                     <button
-                      onClick={() => sendPushButtonCommand(onAddress, offAddress, index, false)}
-                      disabled={buttonStates[`${index}_start`] || buttonStates[`${index}_stop`] || !deviceOnline}
+                      onClick={() =>
+                        sendPushButtonCommand(onAddress, offAddress, index, false)
+                      }
+                      disabled={
+                        buttonStates[`${index}_start`] ||
+                        buttonStates[`${index}_stop`] ||
+                        !deviceOnline
+                      }
                       className="w-full flex items-center justify-center px-4 py-2.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 text-white rounded-lg font-medium transition-colors"
                     >
                       <Square className="h-4 w-4 mr-2" />
@@ -340,8 +393,11 @@ const PLCDashboard = () => {
           </div>
         </div>
 
+        {/* INPUT GRID — UNTOUCHED */}
         <div className="mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 mb-6">Input Status</h2>
+          <h2 className="text-lg font-semibold text-gray-900 mb-6">
+            Input Status
+          </h2>
           <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-8 gap-3">
             {inputStatuses.map((status, index) => (
               <div
@@ -366,7 +422,11 @@ const PLCDashboard = () => {
                     ></div>
                   </div>
                 </div>
-                <div className={`text-xs font-bold ${status === 1 ? "text-blue-600" : "text-gray-500"}`}>
+                <div
+                  className={`text-xs font-bold ${
+                    status === 1 ? "text-blue-600" : "text-gray-500"
+                  }`}
+                >
                   {status === 1 ? "ON" : "OFF"}
                 </div>
               </div>
@@ -378,7 +438,9 @@ const PLCDashboard = () => {
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <div className="flex items-center space-x-3">
               <div className="w-4 h-4 bg-blue-600 rounded-full animate-pulse"></div>
-              <span className="text-sm font-medium text-blue-800">Updating system status...</span>
+              <span className="text-sm font-medium text-blue-800">
+                Updating system status...
+              </span>
             </div>
           </div>
         )}
