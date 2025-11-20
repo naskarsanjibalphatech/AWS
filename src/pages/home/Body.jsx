@@ -23,11 +23,11 @@ const PLCDashboard = () => {
 
   // New APIs
   const TRIGGER_API =
-    " https://3asyvhgv00.execute-api.ap-south-1.amazonaws.com/SSWAHA/";
+    " https://a05dqxd5b1.execute-api.us-east-1.amazonaws.com/S1";
   const READ_API =
-    " https://3asyvhgv00.execute-api.ap-south-1.amazonaws.com/SSWAHA/";
+    " https://a05dqxd5b1.execute-api.us-east-1.amazonaws.com/S1";
   const WRITE_API =
-    " https://3asyvhgv00.execute-api.ap-south-1.amazonaws.com/SSWAHA/";
+    " https://a05dqxd5b1.execute-api.us-east-1.amazonaws.com/S1";
 
   // Trigger API
   const triggerDataUpdate = async () => {
@@ -262,7 +262,9 @@ const PLCDashboard = () => {
                 >
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-900">
-                      Output {index}
+                     <h3 className="text-lg font-semibold text-gray-900">
+  {index === 0 ? "Release" : index === 1 ? "Apply" : `Output ${index}`}
+</h3>
                     </h3>
                     <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                       {index}
