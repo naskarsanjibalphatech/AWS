@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+ import React, { useState, useEffect, useCallback } from "react";
 import {
   Power,
   Wifi,
@@ -64,17 +64,30 @@ const AlphatechChargingStation = () => {
     }
   }, []);
 
-  // Fetch kWh Reading
+  
+  // ================= kWh READING (FIXED) =================
   const fetchKwhReading = useCallback(async () => {
     try {
-      await triggerKwhUpdate();
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // ✅ Trigger ENERGY METER Lambda
+      await fetch(KWH_TRIGGER_API, { method: "PUT" });
 
-      const response = await fetch(`${READ_API}/?address=10000&last=1`).then((res) => res.json());
-      const kwhValue = response && response.length > 0 ? parseFloat(response[0].value) || 0 : 0;
-      setKwhReading(kwhValue);
+      // Wait for DynamoDB write
+      await new Promise((r) => setTimeout(r, 2000));
+
+      // ✅ Correct kWh register
+      const res = await fetch(`${READ_API}/?address=30000&last=1`);
+      const data = await res.json();
+
+      console.log("kWh response:", data);
+
+      const kwh =
+        Array.isArray(data) && data.length > 0
+          ? Number(data[0].value) || 0
+          : 0;
+
+      setKwhReading(kwh);
     } catch (err) {
-      console.warn("kWh fetch failed:", err.message);
+      console.error("kWh fetch error:", err);
     }
   }, []);
 
