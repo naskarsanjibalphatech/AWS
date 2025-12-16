@@ -75,7 +75,7 @@ const AlphatechChargingStation = () => {
       await new Promise((r) => setTimeout(r, 2000));
 
       // ✅ Correct kWh register
-      const res = await fetch(`${READ_API}/?address=30000&last=1`);
+      const res = await fetch(`${READ_API}/?address=420007&last=1`);
       const data = await res.json();
 
       console.log("kWh response:", data);
