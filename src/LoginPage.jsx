@@ -7,127 +7,53 @@ const LoginPage = ({ onLoginSuccess }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  // **Here's where you set your secret words!**
-  const SECRET_USER_ID = 'PL@100';
-  const SECRET_PASSWORD = 'PL@100';
+  const users = {
+    admin: { id: 'admin', password: 'admin123', role: 'admin' },
+    user1: { id: 'user1', password: '1234', role: 'user' }
+  };
 
   const handleLogin = () => {
-   if (userId === SECRET_USER_ID && password === SECRET_PASSWORD) {
-  setError('');
-  localStorage.setItem('isLoggedIn', 'true'); // ✅ persist login
-  onLoginSuccess();
-  navigate('/dashboard');
-}
- 
-    else {
-      setError('Invalid Credentials. Please try again.');
+    const user = Object.values(users).find(u => u.id === userId && u.password === password);
+    if (user) {
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('userRole', user.role);
+      localStorage.setItem('userId', user.id);
+      setError('');
+      onLoginSuccess();
+      navigate('/dashboard');
+    } else {
+      setError('Wrong ID or Password');
     }
   };
 
-  const containerStyle = {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '100vh',
-    backgroundColor: '#f4f6f8', // Light gray background
-  };
-
-  const formContainerStyle = {
-    backgroundColor: 'white',
-    padding: '30px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    width: '400px', // Set a fixed width for the form
-    maxWidth: '90%', // Ensure it's responsive on smaller screens
-  };
-
-  const headingStyle = {
-    textAlign: 'center',
-    marginBottom: '25px',
-    color: '#333',
-    fontWeight: 'bold',
-    fontSize: '24px',
-  };
-
-  const errorStyle = {
-    color: '#d32f2f', // Red color for error
-    marginBottom: '15px',
-    textAlign: 'center',
-  };
-
-  const labelStyle = {
-    display: 'block',
-    marginBottom: '8px',
-    color: '#555',
-    fontWeight: 'medium',
-  };
-
-  const inputStyle = {
-    width: '100%',
-    padding: '12px',
-    marginBottom: '20px',
-    borderRadius: '4px',
-    border: '1px solid #ccc',
-    boxSizing: 'border-box', // Ensure padding doesn't increase width
-    fontSize: '16px',
-  };
-
-  const buttonStyle = {
-    backgroundColor: '#007bff',
-    color: 'white',
-    padding: '12px 20px',
-    borderRadius: '4px',
-    border: 'none',
-    cursor: 'pointer',
-    fontSize: '16px',
-    width: '100%',
-    fontWeight: 'medium',
-    transition: 'background-color 0.3s ease', // Add a hover effect
-  };
-
-  const buttonHoverStyle = {
-    backgroundColor: '#0056b3',
-  };
-
-  const handleMouseEnter = (e) => {
-    e.target.style.backgroundColor = buttonHoverStyle.backgroundColor;
-  };
-
-  const handleMouseLeave = (e) => {
-    e.target.style.backgroundColor = buttonStyle.backgroundColor;
-  };
-
   return (
-    <div style={containerStyle}>
-      <div style={formContainerStyle}>
-        <h2 style={headingStyle}>Login</h2>
-        {error && <p style={errorStyle}>{error}</p>}
-        <div>
-          <label style={labelStyle}>User ID:</label>
-          <input
-            type="text"
-            value={userId}
-            onChange={(e) => setUserId(e.target.value)}
-            style={inputStyle}
-          />
+    <div style={{display:'flex', justifyContent:'center', alignItems:'center', minHeight:'100vh', background:'#f0f2f5'}}>
+      <div style={{background:'white', padding:'40px', borderRadius:'12px', boxShadow:'0 10px 30px rgba(0,0,0,0.1)', width:'400px'}}>
+        <h2 style={{textAlign:'center', marginBottom:'30px', color:'#333', fontSize:'28px'}}>EV Charging Login</h2>
+        
+        {error && <div style={{background:'red', color:'white', padding:'12px', borderRadius:'8px', marginBottom:'20px', textAlign:'center'}}>{error}</div>}
+        
+        <div style={{marginBottom:'20px'}}>
+          <label style={{display:'block', marginBottom:'8px', color:'#555', fontWeight:'bold'}}>User ID:</label>
+          <input type="text" value={userId} onChange={(e)=>setUserId(e.target.value)} 
+                 style={{width:'100%', padding:'12px', border:'1px solid #ddd', borderRadius:'6px', fontSize:'16px'}} />
         </div>
-        <div>
-          <label style={labelStyle}>Password:</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            style={inputStyle}
-          />
+        
+        <div style={{marginBottom:'30px'}}>
+          <label style={{display:'block', marginBottom:'8px', color:'#555', fontWeight:'bold'}}>Password:</label>
+          <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} 
+                 style={{width:'100%', padding:'12px', border:'1px solid #ddd', borderRadius:'6px', fontSize:'16px'}} />
         </div>
-        <button
-          onClick={handleLogin}
-          style={buttonStyle}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-        >
-          Sign In
+        
+        <button onClick={handleLogin} 
+                style={{width:'100%', padding:'14px', background:'#007bff', color:'white', border:'none', borderRadius:'8px', fontSize:'16px', cursor:'pointer'}}>
+          Login
         </button>
+        
+        <div style={{marginTop:'20px', fontSize:'14px', textAlign:'center', color:'#666'}}>
+          <div><strong>Admin:</strong> admin / admin123</div>
+          <div><strong>User:</strong> user1 / 1234</div>
+        </div>
       </div>
     </div>
   );
