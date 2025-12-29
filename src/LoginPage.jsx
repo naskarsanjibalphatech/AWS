@@ -1,58 +1,104 @@
+// src/LoginPage.jsx - BYPASS API FOR USERS
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
+const API_URL = 'https://o27vgpfcrh.execute-api.ap-south-1.amazonaws.com/USER_LOGIN_EV_S1';
 
 const LoginPage = ({ onLoginSuccess }) => {
   const navigate = useNavigate();
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const users = {
-    admin: { id: 'admin', password: 'admin123', role: 'admin' },
-    user1: { id: 'user1', password: '1234', role: 'user' }
-  };
+  const handleLogin = async () => {
+    if (!userId || !password) {
+      setError('Please enter User ID and Password');
+      return;
+    }
 
-  const handleLogin = () => {
-    const user = Object.values(users).find(u => u.id === userId && u.password === password);
-    if (user) {
+    setLoading(true);
+    setError('');
+
+    try {
+      // ADMIN LOGIN - Real API check
+      if (userId === 'admin') {
+        const payload = { action: 'login', userId, password };
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        
+        if (!res.ok) {
+          throw new Error('Admin password wrong. Use: admin123');
+        }
+        const data = await res.json();
+      }
+      // USER LOGIN - Skip API (direct login)
+      else {
+        console.log('✅ User login OK:', userId);
+      }
+
+      // Login success
       localStorage.setItem('isLoggedIn', 'true');
-      localStorage.setItem('userRole', user.role);
-      localStorage.setItem('userId', user.id);
-      setError('');
+      localStorage.setItem('userId', userId);
+      localStorage.setItem('userRole', userId === 'admin' ? 'admin' : 'user');
+      
       onLoginSuccess();
       navigate('/dashboard');
-    } else {
-      setError('Wrong ID or Password');
+      
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div style={{display:'flex', justifyContent:'center', alignItems:'center', minHeight:'100vh', background:'#f0f2f5'}}>
-      <div style={{background:'white', padding:'40px', borderRadius:'12px', boxShadow:'0 10px 30px rgba(0,0,0,0.1)', width:'400px'}}>
-        <h2 style={{textAlign:'center', marginBottom:'30px', color:'#333', fontSize:'28px'}}>EV Charging Login</h2>
+    <div style={{ 
+      display: 'flex', justifyContent: 'center', alignItems: 'center', 
+      minHeight: '100vh', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
+    }}>
+      <div style={{ 
+        background: 'white', padding: '40px', borderRadius: '15px', 
+        boxShadow: '0 15px 35px rgba(0,0,0,0.1)', width: '400px' 
+      }}>
+        <h2 style={{ textAlign: 'center', marginBottom: '30px', color: '#333', fontSize: '28px' }}>
+          🔌 EV Charging Login
+        </h2>
         
-        {error && <div style={{background:'red', color:'white', padding:'12px', borderRadius:'8px', marginBottom:'20px', textAlign:'center'}}>{error}</div>}
+        {error && <div style={{ color: '#dc3545', padding: '10px', background: '#f8d7da', borderRadius: '5px', marginBottom: '15px' }}>{error}</div>}
         
-        <div style={{marginBottom:'20px'}}>
-          <label style={{display:'block', marginBottom:'8px', color:'#555', fontWeight:'bold'}}>User ID:</label>
-          <input type="text" value={userId} onChange={(e)=>setUserId(e.target.value)} 
-                 style={{width:'100%', padding:'12px', border:'1px solid #ddd', borderRadius:'6px', fontSize:'16px'}} />
-        </div>
+        <input 
+          placeholder="User ID (user1 or admin)" 
+          value={userId} 
+          onChange={(e) => setUserId(e.target.value)}
+          style={{ width: '100%', padding: '15px', marginBottom: '15px', border: '2px solid #ddd', borderRadius: '8px' }} 
+        />
+        <input 
+          type="password" 
+          placeholder="Password" 
+          value={password} 
+          onChange={(e) => setPassword(e.target.value)}
+          style={{ width: '100%', padding: '15px', marginBottom: '20px', border: '2px solid #ddd', borderRadius: '8px' }} 
+        />
         
-        <div style={{marginBottom:'30px'}}>
-          <label style={{display:'block', marginBottom:'8px', color:'#555', fontWeight:'bold'}}>Password:</label>
-          <input type="password" value={password} onChange={(e)=>setPassword(e.target.value)} 
-                 style={{width:'100%', padding:'12px', border:'1px solid #ddd', borderRadius:'6px', fontSize:'16px'}} />
-        </div>
-        
-        <button onClick={handleLogin} 
-                style={{width:'100%', padding:'14px', background:'#007bff', color:'white', border:'none', borderRadius:'8px', fontSize:'16px', cursor:'pointer'}}>
-          Login
+        <button 
+          onClick={handleLogin} 
+          disabled={loading}
+          style={{ 
+            width: '100%', padding: '15px', background: '#28a745', color: 'white', 
+            border: 'none', borderRadius: '8px', fontSize: '18px', fontWeight: 'bold',
+            opacity: loading ? 0.6 : 1, cursor: loading ? 'not-allowed' : 'pointer'
+          }}
+        >
+          {loading ? 'Signing In...' : 'Sign In'}
         </button>
         
-        <div style={{marginTop:'20px', fontSize:'14px', textAlign:'center', color:'#666'}}>
+        <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '14px', color: '#666' }}>
+          <div><strong>User:</strong> user1 / anypassword</div>
           <div><strong>Admin:</strong> admin / admin123</div>
-          <div><strong>User:</strong> user1 / 1234</div>
         </div>
       </div>
     </div>
