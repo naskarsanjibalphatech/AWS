@@ -2,8 +2,12 @@ import { ConfigProvider, theme } from "antd";
 import { LIGHT_MODE_TOKEN } from "src/utils";
 import { Home } from "src/pages";
 import { Toaster } from "react-hot-toast";
-export const Wrapper = () => {
+
+export const Wrapper = ({ onLogout }) => {
+  console.log('🔍 Wrapper render - showing Home');
+  
   const { defaultAlgorithm } = theme;
+  
   return (
     <ConfigProvider
       theme={{
@@ -16,8 +20,6 @@ export const Wrapper = () => {
         position="top-right"
         reverseOrder={false}
         gutter={8}
-        containerClassName=""
-        containerStyle={{}}
         toastOptions={{
           className: "",
           duration: 5000,
