@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Zap, User, Lock, AlertCircle } from 'lucide-react';
+import { User, Lock } from 'lucide-react';
 
 const LoginPage = ({ onLoginSuccess }) => {
-  const navigate = useNavigate();
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -16,6 +14,20 @@ const LoginPage = ({ onLoginSuccess }) => {
   const handleLogin = async () => {
     console.log('🔍 Login attempt:', { userId, password: '***' });
     
+    // ✅ Admin login
+    if (userId === 'admin' && password === 'admin123') {
+      console.log('✅ Admin login SUCCESS');
+      setError('');
+      
+      localStorage.setItem('isLoggedIn', 'true');
+      localStorage.setItem('currentUserId', userId);
+      localStorage.setItem('userRole', 'admin');
+      
+      onLoginSuccess();
+      window.location.href = '/admin';
+      return;
+    }
+    
     // ✅ Original Office login (your existing logic)
     if (userId === SECRET_USER_ID && password === SECRET_PASSWORD) {
       console.log('✅ Original Office login SUCCESS');
@@ -23,10 +35,10 @@ const LoginPage = ({ onLoginSuccess }) => {
       
       localStorage.setItem('isLoggedIn', 'true');
       localStorage.setItem('currentUserId', userId);
-      localStorage.setItem('userRole', 'user'); // Office = regular user
+      localStorage.setItem('userRole', 'user');
       
       onLoginSuccess();
-      navigate('/user-dashboard');
+      window.location.href = '/user-dashboard';
       return;
     }
 
@@ -53,11 +65,9 @@ const LoginPage = ({ onLoginSuccess }) => {
       const data = await response.json();
       console.log('📡 API-4 Response:', data);
 
-      // ✅ FIXED: Matches YOUR API response {message: 'Login successful', role: 'admin'}
       if (response.ok && (data.success || data.userId || data.message === 'Login successful' || data.role)) {
         console.log('✅ API-4 login SUCCESS');
         
-        // Set all EV localStorage
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('currentUserId', userId);
         localStorage.setItem('userRole', data.role || (userId.toLowerCase() === 'admin' ? 'admin' : 'user'));
@@ -66,10 +76,9 @@ const LoginPage = ({ onLoginSuccess }) => {
         
         onLoginSuccess();
         
-        // Admin → Admin Panel, User → User Dashboard
         const targetRoute = data.role === 'admin' || userId.toLowerCase() === 'admin' ? '/admin' : '/user-dashboard';
         console.log('🚀 Redirecting to:', targetRoute);
-        navigate(targetRoute);
+        window.location.href = targetRoute;
       } else {
         console.log('❌ API-4 login FAILED');
         setError(data.message || 'Invalid EV credentials');
@@ -82,7 +91,6 @@ const LoginPage = ({ onLoginSuccess }) => {
     }
   };
 
-  // Your original inline styles (enhanced for EV theme)
   const containerStyle = {
     display: 'flex',
     justifyContent: 'center',
@@ -95,10 +103,10 @@ const LoginPage = ({ onLoginSuccess }) => {
   const formContainerStyle = {
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     backdropFilter: 'blur(20px)',
-    padding: '40px',
+    padding: 'clamp(30px, 6vw, 50px)',
     borderRadius: '20px',
     boxShadow: '0 25px 50px rgba(0, 0, 0, 0.15)',
-    width: '450px',
+    width: 'clamp(320px, 90vw, 500px)',
     maxWidth: '95%',
     border: '1px solid rgba(255, 255, 255, 0.2)'
   };
@@ -135,12 +143,12 @@ const LoginPage = ({ onLoginSuccess }) => {
 
   const inputStyle = {
     width: '100%',
-    padding: '16px 20px',
-    marginBottom: '24px',
+    padding: 'clamp(12px, 3vw, 16px) clamp(15px, 4vw, 20px)',
+    marginBottom: '20px',
     borderRadius: '12px',
     border: '2px solid #e5e7eb',
     boxSizing: 'border-box',
-    fontSize: '16px',
+    fontSize: 'clamp(14px, 3vw, 16px)',
     transition: 'all 0.3s ease',
     backgroundColor: 'white'
   };
@@ -178,23 +186,54 @@ const LoginPage = ({ onLoginSuccess }) => {
   return (
     <div style={containerStyle}>
       <div style={formContainerStyle}>
-        {/* EV Header */}
-        <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <div style={{
-            width: '80px',
-            height: '80px',
-            background: 'linear-gradient(135deg, #10b981, #059669)',
-            borderRadius: '20px',
-            margin: '0 auto 20px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            boxShadow: '0 15px 35px rgba(16, 185, 129, 0.4)'
-          }}>
-            <Zap style={{ width: '40px', height: '40px', color: 'white' }} />
+        <div style={{ textAlign: 'center', marginBottom: '40px' }}>
+          <div 
+            style={{
+              width: 'clamp(160px, 25vw, 220px)',
+              height: 'clamp(160px, 25vw, 220px)',
+              background: 'linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%)',
+              borderRadius: '24px',
+              margin: '0 auto 30px',
+              padding: '15px',
+              boxShadow: '0 20px 50px rgba(16, 185, 129, 0.3)',
+              transition: 'transform 0.3s ease, box-shadow 0.3s ease',
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              overflow: 'hidden'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'translateY(-8px) scale(1.08)';
+              e.currentTarget.style.boxShadow = '0 30px 60px rgba(16, 185, 129, 0.4)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'translateY(0) scale(1)';
+              e.currentTarget.style.boxShadow = '0 20px 50px rgba(16, 185, 129, 0.3)';
+            }}
+          >
+            <img 
+              src="/18.PNG" 
+              alt="AlphaTech Solutions Logo"
+              style={{ 
+                width: '90%', 
+                height: '90%',
+                objectFit: 'contain',
+                filter: 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.15))'
+              }}
+            />
           </div>
-          <h2 style={headingStyle}>EV ChargeHub</h2>
-          <p style={{ color: '#6b7280', fontSize: '16px', margin: 0 }}>
+          <h2 style={{
+            ...headingStyle,
+            fontSize: 'clamp(24px, 5vw, 32px)',
+            marginBottom: '12px'
+          }}>EV CHARGING STATION</h2>
+          <p style={{ 
+            color: '#6b7280', 
+            fontSize: 'clamp(13px, 3vw, 16px)', 
+            margin: 0,
+            fontWeight: '500'
+          }}>
             Smart Charging Station Control
           </p>
         </div>
@@ -250,23 +289,15 @@ const LoginPage = ({ onLoginSuccess }) => {
         >
           {loading ? '🔄 Verifying...' : '⚡ LOGIN & CHARGE'}
         </button>
-
-        {/* Demo Credentials */}
-        <div style={{
-          marginTop: '30px',
-          paddingTop: '20px',
-          borderTop: '2px dashed #d1d5db',
-          textAlign: 'center',
-          fontSize: '14px'
-        }}>
-          <p style={{ margin: '0 0 8px 0', color: '#6b7280' }}>🧪 Test Credentials:</p>
-          <div style={{ lineHeight: '1.6' }}>
-            <div><code style={{ background: '#10b98120', padding: '4px 8px', borderRadius: '6px' }}>admin</code> / admin123</div>
-            <div><code style={{ background: '#3b82f620', padding: '4px 8px', borderRadius: '6px' }}>user1</code> / 1234</div>
-            <div><code style={{ background: '#eab30820', padding: '4px 8px', borderRadius: '6px' }}>Office</code> / Office@100</div>
-          </div>
-        </div>
       </div>
+
+      <style>{`
+        @media (max-width: 480px) {
+          .login-form-container {
+            padding: 30px 20px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 };
