@@ -138,40 +138,45 @@ const UserDashboard = ({ onLogout }) => {
   }, [userId]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-emerald-900 to-slate-800 p-2 sm:p-4 lg:p-6 relative overflow-hidden">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-10 left-5 w-40 h-40 sm:w-72 sm:h-72 bg-emerald-500/10 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-10 right-5 w-48 h-48 sm:w-96 sm:h-96 bg-blue-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1s'}}></div>
-        <div className="absolute top-1/2 left-1/2 w-32 h-32 sm:w-64 sm:h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{animationDelay: '2s'}}></div>
-      </div>
+    <div className="min-h-screen bg-white p-2 sm:p-4 lg:p-6 relative overflow-hidden">
 
-      <div className="relative z-10">
+      
+
+      <div className="relative z-10 text-black font-bold">
+
         {/* Futuristic Header */}
-        <div className="bg-gradient-to-r from-slate-800/90 via-emerald-900/90 to-slate-800/90 backdrop-blur-xl shadow-2xl border border-emerald-500/30 sticky top-0 z-50 rounded-xl sm:rounded-2xl mb-4 sm:mb-6">
+        <div className="bg-gray-800 text-white shadow-lg border border-black sticky top-0 z-50 rounded-xl sm:rounded-2xl mb-4 sm:mb-6">
+
+
+
           <div className="px-3 py-3 sm:px-6 sm:py-5">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
               <div className="flex items-center space-x-2 sm:space-x-4">
                 {/* Custom Logo */}
                 <div className="relative">
                   <div className="absolute inset-0 bg-red-500 rounded-xl sm:rounded-2xl blur-lg sm:blur-xl opacity-30 animate-pulse"></div>
-                  <div className="relative w-10 h-10 sm:w-14 sm:h-14 bg-white rounded-xl sm:rounded-2xl shadow-lg flex items-center justify-center overflow-hidden">
-                    <svg viewBox="0 0 100 100" className="w-8 h-8 sm:w-12 sm:h-12">
-                      <circle cx="50" cy="40" r="30" fill="#DC2626" />
-                      <circle cx="50" cy="40" r="18" fill="white" />
-                      <polygon points="50,35 70,75 30,75" fill="black" />
-                    </svg>
+                  <div className="relative w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-white rounded-2xl shadow-lg flex items-center justify-center overflow-hidden">
+
+                    <img
+  src="/logo_160126.jpeg"
+  alt="EV Charging Station Logo"
+  className="w-10 h-10 sm:w-14 sm:h-14 object-contain"
+/>
+
                   </div>
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-lg sm:text-2xl lg:text-3xl font-black bg-gradient-to-r from-emerald-300 via-green-300 to-emerald-400 bg-clip-text text-transparent">
-                    EV CHARGE STATION
-                  </h1>
+                  <h1 className="text-lg sm:text-2xl lg:text-3xl font-black text-red-600">
+  EV CHARGE STATION
+</h1>
+
                   <div className="flex items-center space-x-1.5 sm:space-x-2 mt-0.5 sm:mt-1">
-                    <span className="text-xs text-emerald-400 font-mono">USER ID:</span>
-                    <span className="bg-gradient-to-r from-emerald-500/20 to-green-500/20 px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg text-emerald-300 font-bold text-xs sm:text-sm border border-emerald-500/30">
-                      {userId}
-                    </span>
+                    <span className="text-xs text-red-600 font-mono">USER ID:</span>
+
+                    <span className="bg-white px-2 py-0.5 sm:px-3 sm:py-1 rounded-lg text-black font-bold text-xs sm:text-sm border border-black">
+  {userId}
+</span>
+
                   </div>
                 </div>
               </div>
@@ -217,21 +222,17 @@ const UserDashboard = ({ onLogout }) => {
           )}
 
           {/* Main Charging Status - Hero Section */}
-          <div className="relative bg-gradient-to-br from-slate-800/80 via-emerald-900/80 to-slate-800/80 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-2xl border border-emerald-500/30">
+          <div className="relative bg-white border border-black rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-md">
+
             <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-green-500/5 rounded-2xl sm:rounded-3xl"></div>
             
             <div className="relative z-10">
               <div className="text-center mb-4 sm:mb-6">
-                <h2 className="text-xl sm:text-2xl lg:text-3xl font-black bg-gradient-to-r from-emerald-300 to-green-300 bg-clip-text text-transparent mb-1 sm:mb-2">
-                  CHARGING STATUS
-                </h2>
-                <div className="inline-block px-3 py-1 sm:px-4 sm:py-1.5 bg-slate-700/50 rounded-full border border-emerald-500/30">
-                  <span className="text-xs font-mono text-emerald-400">REG: 420048</span>
-                  <span className="text-xs text-slate-400 mx-1 sm:mx-2">|</span>
-                  <span className="text-xs font-mono text-slate-300">
-                    {lastUpdate ? new Date(lastUpdate).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second: '2-digit'}) : 'AWAITING'}
-                  </span>
-                </div>
+                <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-red-600 mb-1 sm:mb-2">
+  CHARGING STATUS
+</h2>
+
+                
               </div>
 
               <div className="flex flex-col items-center justify-center space-y-4 sm:space-y-6">
@@ -300,7 +301,7 @@ const UserDashboard = ({ onLogout }) => {
                   <div className="relative flex flex-col items-center justify-center h-full space-y-1 sm:space-y-2">
                     <Power className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-lg" />
                     <div className="text-base sm:text-xl tracking-wider">START</div>
-                    <div className="text-xs font-mono opacity-70 bg-black/20 px-2 py-0.5 rounded">420030</div>
+                    
                   </div>
                 </button>
 
@@ -314,7 +315,7 @@ const UserDashboard = ({ onLogout }) => {
                   <div className="relative flex flex-col items-center justify-center h-full space-y-1 sm:space-y-2">
                     <Square className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-lg" />
                     <div className="text-base sm:text-xl tracking-wider">STOP</div>
-                    <div className="text-xs font-mono opacity-70 bg-black/20 px-2 py-0.5 rounded">420031</div>
+                    
                   </div>
                 </button>
               </div>
@@ -322,30 +323,28 @@ const UserDashboard = ({ onLogout }) => {
           </div>
 
           {/* Balance Card - Redesigned */}
-          <div className="relative bg-gradient-to-br from-amber-900/80 via-orange-900/80 to-amber-900/80 backdrop-blur-xl rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-2xl border border-amber-500/30 overflow-hidden">
-            <div className="absolute top-0 right-0 w-24 h-24 sm:w-40 sm:h-40 bg-gradient-to-br from-amber-400/20 to-orange-500/20 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-0 left-0 w-20 h-20 sm:w-32 sm:h-32 bg-gradient-to-tr from-amber-500/20 to-yellow-500/20 rounded-full blur-3xl"></div>
+          <div className="relative bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-md border border-black overflow-hidden">
+
+            
+           
             
             <div className="relative z-10 flex items-center justify-between">
               <div className="flex-1">
                 <div className="flex items-center space-x-2 mb-2 sm:mb-3">
-                  <div className="p-1.5 sm:p-2 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg sm:rounded-xl shadow-lg">
-                    <DollarSign className="w-4 h-4 sm:w-6 sm:h-6 text-white" />
-                  </div>
-                  <h3 className="text-sm sm:text-lg lg:text-xl font-black text-amber-200">ACCOUNT BALANCE</h3>
+                  <span className="text-black font-bold text-3xl mr-2">•</span>
+
+                  <h3 className="text-sm sm:text-lg lg:text-xl font-black text-black">
+  ACCOUNT BALANCE
+</h3>
+
                 </div>
-                <div className="text-3xl sm:text-5xl lg:text-6xl font-black text-transparent bg-gradient-to-r from-amber-300 via-yellow-300 to-amber-200 bg-clip-text mb-1.5 sm:mb-2">
-                  ₹{userBalance.toFixed(2)}
-                </div>
-                <div className="inline-block px-2 py-0.5 sm:px-3 sm:py-1 bg-slate-800/50 rounded-lg border border-amber-500/30">
-                  <span className="text-xs font-mono text-amber-400">REG: 420050 | ID: {userId}</span>
-                </div>
+                <div className="text-3xl sm:text-5xl lg:text-6xl font-black text-black mb-1.5 sm:mb-2">
+  ₹{userBalance.toFixed(2)}
+</div>
+
+                
               </div>
-              <div className="hidden sm:block">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl sm:rounded-3xl rotate-12 shadow-2xl flex items-center justify-center">
-                  <DollarSign className="w-10 h-10 sm:w-12 sm:h-12 lg:w-16 lg:h-16 text-white drop-shadow-lg" />
-                </div>
-              </div>
+              
             </div>
           </div>
 
@@ -361,6 +360,22 @@ const UserDashboard = ({ onLogout }) => {
               </div>
             </div>
           )}
+          {/* Footer */}
+<div className="mt-8 py-4 text-center border-t border-black">
+  <p className="text-sm font-bold text-gray-400">
+    Design & Developed By{" "}
+    <a
+      href="https://www.alphatechsolutions.in"
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-gray-400 font-bold"
+    >
+      Alphatech Solutions
+    </a>
+  </p>
+</div>
+
+
         </div>
       </div>
     </div>

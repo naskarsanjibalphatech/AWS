@@ -92,24 +92,26 @@ const LoginPage = ({ onLoginSuccess }) => {
   };
 
   const containerStyle = {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    minHeight: '100vh',
-    background: 'linear-gradient(135deg, #10b981 0%, #059669 50%, #0ea5e9 100%)',
-    padding: '20px'
-  };
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  minHeight: '100vh',
+  background: '#ffffff',
+  padding: '20px'
+};
+
 
   const formContainerStyle = {
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    backdropFilter: 'blur(20px)',
-    padding: 'clamp(30px, 6vw, 50px)',
-    borderRadius: '20px',
-    boxShadow: '0 25px 50px rgba(0, 0, 0, 0.15)',
-    width: 'clamp(320px, 90vw, 500px)',
-    maxWidth: '95%',
-    border: '1px solid rgba(255, 255, 255, 0.2)'
-  };
+  backgroundColor: '#ffffff',
+  padding: 'clamp(30px, 6vw, 50px)',
+  borderRadius: '12px',
+  boxShadow: '0 8px 20px rgba(0, 0, 0, 0.08)',
+  width: 'clamp(320px, 90vw, 500px)',
+  maxWidth: '95%',
+  border: '4px solid #000000'
+
+};
+
 
   const headingStyle = {
     textAlign: 'center',
@@ -117,10 +119,9 @@ const LoginPage = ({ onLoginSuccess }) => {
     color: '#1f2937',
     fontWeight: 'bold',
     fontSize: '28px',
-    background: 'linear-gradient(135deg, #10b981, #059669)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    backgroundClip: 'text'
+    background: 'none',
+WebkitTextFillColor: 'initial',
+
   };
 
   const errorStyle = {
@@ -154,7 +155,7 @@ const LoginPage = ({ onLoginSuccess }) => {
   };
 
   const buttonStyle = {
-    background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+   background: '#000000',
     color: 'white',
     padding: '16px 24px',
     borderRadius: '12px',
@@ -164,17 +165,19 @@ const LoginPage = ({ onLoginSuccess }) => {
     width: '100%',
     fontWeight: 'bold',
     transition: 'all 0.3s ease',
-    boxShadow: '0 10px 25px rgba(16, 185, 129, 0.3)'
+   boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)'
   };
 
   const handleMouseEnter = (e) => {
-    e.target.style.background = 'linear-gradient(135deg, #059669 0%, #047857 100%)';
+    e.target.style.background = '#111111';
+
     e.target.style.transform = 'translateY(-2px)';
     e.target.style.boxShadow = '0 15px 35px rgba(16, 185, 129, 0.4)';
   };
 
   const handleMouseLeave = (e) => {
-    e.target.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+    e.target.style.background = '#000000';
+
     e.target.style.transform = 'translateY(0)';
     e.target.style.boxShadow = '0 10px 25px rgba(16, 185, 129, 0.3)';
   };
@@ -188,40 +191,31 @@ const LoginPage = ({ onLoginSuccess }) => {
       <div style={formContainerStyle}>
         <div style={{ textAlign: 'center', marginBottom: '40px' }}>
           <div 
-            style={{
-              width: 'clamp(160px, 25vw, 220px)',
-              height: 'clamp(160px, 25vw, 220px)',
-              background: 'linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%)',
-              borderRadius: '24px',
-              margin: '0 auto 30px',
-              padding: '15px',
-              boxShadow: '0 20px 50px rgba(16, 185, 129, 0.3)',
-              transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              overflow: 'hidden'
+  style={{
+    width: 'auto',
+    height: 'auto',
+    background: 'transparent',
+    margin: '0 auto 30px',
+    padding: '0',
+    boxShadow: 'none',
+    borderRadius: '0',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center'
             }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'translateY(-8px) scale(1.08)';
-              e.currentTarget.style.boxShadow = '0 30px 60px rgba(16, 185, 129, 0.4)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'translateY(0) scale(1)';
-              e.currentTarget.style.boxShadow = '0 20px 50px rgba(16, 185, 129, 0.3)';
-            }}
+            
           >
             <img 
-              src="/18.PNG" 
-              alt="AlphaTech Solutions Logo"
-              style={{ 
-                width: '90%', 
-                height: '90%',
-                objectFit: 'contain',
-                filter: 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.15))'
-              }}
-            />
+  src="/logo_160126.jpeg" 
+  alt="AlphaTech Solutions Logo"
+  style={{ 
+    width: '100%', 
+    height: '100%',
+    objectFit: 'contain',
+    filter: 'drop-shadow(0 6px 12px rgba(0, 0, 0, 0.15))'
+  }}
+/>
+
           </div>
           <h2 style={{
             ...headingStyle,
@@ -252,7 +246,8 @@ const LoginPage = ({ onLoginSuccess }) => {
             onKeyDown={handleKeyDown}
             style={{
               ...inputStyle,
-              borderColor: loading ? '#d1d5db' : '#10b981',
+              borderColor: loading ? '#d1d5db' : '#000000',
+
               backgroundColor: loading ? '#f9fafb' : 'white'
             }}
             placeholder="admin, user1, or Office"
@@ -272,7 +267,8 @@ const LoginPage = ({ onLoginSuccess }) => {
             onKeyDown={handleKeyDown}
             style={{
               ...inputStyle,
-              borderColor: loading ? '#d1d5db' : '#10b981',
+              borderColor: loading ? '#d1d5db' : '#000000',
+
               backgroundColor: loading ? '#f9fafb' : 'white'
             }}
             placeholder="Enter password"
@@ -281,24 +277,42 @@ const LoginPage = ({ onLoginSuccess }) => {
         </div>
         
         <button
-          onClick={handleLogin}
-          disabled={loading}
-          style={buttonStyle}
-          onMouseEnter={handleMouseEnter}
-          onMouseLeave={handleMouseLeave}
-        >
-          {loading ? '🔄 Verifying...' : '⚡ LOGIN & CHARGE'}
-        </button>
-      </div>
+  onClick={handleLogin}
+  disabled={loading}
+  style={buttonStyle}
+  onMouseEnter={handleMouseEnter}
+  onMouseLeave={handleMouseLeave}
+>
+  {loading ? '🔄 Verifying...' : '⚡ LOGIN & CHARGE'}
+</button>
 
-      <style>{`
-        @media (max-width: 480px) {
-          .login-form-container {
-            padding: 30px 20px !important;
-          }
-        }
-      `}</style>
+<div
+  style={{
+    marginTop: '14px',
+    textAlign: 'center',
+    fontSize: '13px',
+    color: '#9ca3af'
+  }}
+>
+  Design & Developed By{' '}
+  <a
+    href="https://www.alphatechsolutions.in"
+    target="_blank"
+    rel="noopener noreferrer"
+    style={{
+      color: '#9ca3af',
+      textDecoration: 'none',
+      fontWeight: '500'
+    }}
+  >
+    Alphatech Solutions
+  </a>
+</div>
+
+</div>   {/* ← THIS closes formContainerStyle */}
+
     </div>
+    
   );
 };
 
