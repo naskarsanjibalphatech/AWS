@@ -157,7 +157,7 @@ const AdminPanel = ({ onLogout }) => {
   const headerContentStyle = {
     maxWidth: '1400px',
     margin: '0 auto',
-    padding: '16px 20px',
+    padding: window.innerWidth < 768 ? '12px 16px' : '16px 20px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -166,8 +166,8 @@ const AdminPanel = ({ onLogout }) => {
   };
 
   const logoBoxStyle = {
-    width: '50px',
-    height: '50px',
+    width: window.innerWidth < 768 ? '40px' : '50px',
+    height: window.innerWidth < 768 ? '40px' : '50px',
     borderRadius: '12px',
     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
     display: 'flex',
@@ -178,7 +178,7 @@ const AdminPanel = ({ onLogout }) => {
   };
 
   const titleStyle = {
-    fontSize: window.innerWidth < 768 ? '18px' : '28px',
+    fontSize: window.innerWidth < 640 ? '16px' : window.innerWidth < 768 ? '18px' : '28px',
     fontWeight: '700',
     color: '#1a202c',
     margin: '0 0 4px 0'
@@ -195,20 +195,20 @@ const AdminPanel = ({ onLogout }) => {
   const mainStyle = {
     maxWidth: '1400px',
     margin: '0 auto',
-    padding: '20px',
+    padding: window.innerWidth < 640 ? '16px' : window.innerWidth < 768 ? '20px' : '20px',
     minHeight: 'calc(100vh - 80px)'
   };
 
   const gridStyle = {
     display: 'grid',
     gridTemplateColumns: window.innerWidth > 1024 ? '1fr 1fr' : '1fr',
-    gap: '20px'
+    gap: window.innerWidth < 768 ? '16px' : '20px'
   };
 
   const cardStyle = {
     background: '#ffffff',
     borderRadius: '12px',
-    padding: window.innerWidth < 768 ? '16px' : '28px',
+    padding: window.innerWidth < 640 ? '14px' : window.innerWidth < 768 ? '16px' : '28px',
     boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
     border: '1px solid #e5e7eb'
   };
@@ -217,11 +217,11 @@ const AdminPanel = ({ onLogout }) => {
     display: 'flex',
     alignItems: 'center',
     gap: '12px',
-    marginBottom: '20px'
+    marginBottom: window.innerWidth < 768 ? '16px' : '20px'
   };
 
   const cardTitleStyle = {
-    fontSize: window.innerWidth < 768 ? '16px' : '20px',
+    fontSize: window.innerWidth < 640 ? '14px' : window.innerWidth < 768 ? '16px' : '20px',
     fontWeight: '700',
     color: '#1a202c',
     margin: '0'
@@ -252,7 +252,7 @@ const AdminPanel = ({ onLogout }) => {
   };
 
   const errorMessageStyle = {
-    marginBottom: '20px',
+    marginBottom: window.innerWidth < 768 ? '16px' : '20px',
     background: '#fee2e2',
     border: '1px solid #fecaca',
     borderRadius: '10px',
@@ -263,7 +263,7 @@ const AdminPanel = ({ onLogout }) => {
   };
 
   const successMessageStyle = {
-    marginBottom: '20px',
+    marginBottom: window.innerWidth < 768 ? '16px' : '20px',
     background: '#dcfce7',
     border: '1px solid #bbf7d0',
     borderRadius: '10px',
@@ -288,9 +288,9 @@ const AdminPanel = ({ onLogout }) => {
 
   const actionButtonsContainerStyle = {
     display: 'grid',
-    gridTemplateColumns: window.innerWidth < 768 ? '1fr 1fr' : '1fr 1fr',
-    gap: '8px',
-    marginBottom: '20px'
+    gridTemplateColumns: window.innerWidth < 640 ? '1fr' : window.innerWidth < 768 ? '1fr 1fr' : '1fr 1fr',
+    gap: window.innerWidth < 768 ? '8px' : '8px',
+    marginBottom: window.innerWidth < 768 ? '16px' : '20px'
   };
 
   const actionButtonStyle = {
@@ -299,7 +299,7 @@ const AdminPanel = ({ onLogout }) => {
     color: '#374151',
     border: 'none',
     borderRadius: '8px',
-    fontSize: window.innerWidth < 768 ? '11px' : '12px',
+    fontSize: window.innerWidth < 640 ? '10px' : window.innerWidth < 768 ? '11px' : '12px',
     fontWeight: '600',
     cursor: 'pointer',
     transition: 'all 0.2s ease'
@@ -328,7 +328,7 @@ const AdminPanel = ({ onLogout }) => {
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: window.innerWidth < 768 ? '6px' : '8px', alignItems: 'center' }}>
             <button 
               onClick={fetchUsers} 
               disabled={loading}
@@ -336,21 +336,22 @@ const AdminPanel = ({ onLogout }) => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: window.innerWidth < 768 ? '4px' : '8px',
-                padding: window.innerWidth < 768 ? '8px 12px' : '10px 20px',
+                padding: window.innerWidth < 640 ? '6px 10px' : window.innerWidth < 768 ? '8px 12px' : '10px 20px',
                 background: loading ? '#cbd5e1' : '#667eea',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '8px',
-                fontSize: window.innerWidth < 768 ? '11px' : '14px',
+                fontSize: window.innerWidth < 640 ? '10px' : window.innerWidth < 768 ? '11px' : '14px',
                 fontWeight: '600',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 transition: 'all 0.3s ease',
                 opacity: loading ? 0.7 : 1,
-                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)',
+                whiteSpace: 'nowrap'
               }}
             >
               <Zap style={{ width: window.innerWidth < 768 ? '14px' : '18px', height: window.innerWidth < 768 ? '14px' : '18px' }} />
-              <span style={{ display: window.innerWidth < 768 ? 'none' : 'inline' }}>Refresh</span>
+              <span style={{ display: window.innerWidth < 640 ? 'none' : 'inline' }}>Refresh</span>
             </button>
 
             <button 
@@ -359,20 +360,21 @@ const AdminPanel = ({ onLogout }) => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: window.innerWidth < 768 ? '4px' : '8px',
-                padding: window.innerWidth < 768 ? '8px 12px' : '10px 20px',
+                padding: window.innerWidth < 640 ? '6px 10px' : window.innerWidth < 768 ? '8px 12px' : '10px 20px',
                 background: '#ef4444',
                 color: '#ffffff',
                 border: 'none',
                 borderRadius: '8px',
-                fontSize: window.innerWidth < 768 ? '11px' : '14px',
+                fontSize: window.innerWidth < 640 ? '10px' : window.innerWidth < 768 ? '11px' : '14px',
                 fontWeight: '600',
                 cursor: 'pointer',
                 transition: 'all 0.3s ease',
-                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
+                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)',
+                whiteSpace: 'nowrap'
               }}
             >
               <LogOut style={{ width: window.innerWidth < 768 ? '14px' : '18px', height: window.innerWidth < 768 ? '14px' : '18px' }} />
-              <span style={{ display: window.innerWidth < 768 ? 'none' : 'inline' }}>Logout</span>
+              <span style={{ display: window.innerWidth < 640 ? 'none' : 'inline' }}>Logout</span>
             </button>
           </div>
         </div>
