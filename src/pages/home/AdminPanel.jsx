@@ -1,157 +1,131 @@
 import React, { useState, useEffect } from 'react';
-import { User, DollarSign, Trash2, Edit3, LogOut, Zap, AlertCircle, Plus, CheckCircle, Lock } from 'lucide-react';
+import { User, DollarSign, Trash2, LogOut, Zap, AlertCircle, Plus, CheckCircle } from 'lucide-react';
 
 const AdminPanel = ({ onLogout }) => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-
-  // Form states
   const [action, setAction] = useState('list');
-  const [adminId, setAdminId] = useState('admin');
-  const [adminPassword, setAdminPassword] = useState('admin123');
+  const [adminId] = useState('admin');
+  const [adminPassword] = useState('admin123');
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [newBalance, setNewBalance] = useState('');
-  const [oldUserId, setOldUserId] = useState('');
-  const [newUserId, setNewUserId] = useState('');
-  const [newPassword, setNewPassword] = useState('');
 
   const USER_API = "https://o27vgpfcrh.execute-api.ap-south-1.amazonaws.com/USER_LOGIN_EV_S1";
 
-  // ✅ BULLETPROOF Response Parser
   const safeParseResponse = async (response) => {
     try {
       const contentType = response.headers.get('content-type');
       const rawText = await response.text();
-      
       if (contentType && contentType.includes('application/json')) {
         return JSON.parse(rawText);
-      } else {
-        return { message: rawText || 'Server error', success: response.ok };
       }
+      return { message: rawText || 'Server error', success: response.ok };
     } catch (err) {
       return { message: 'Failed to parse response', success: false };
     }
   };
 
-  // ✅ FIXED: List users WITH admin credentials
   const fetchUsers = async () => {
     try {
       setLoading(true);
       setError('');
-
+      console.log('📡 Fetching users with API:', USER_API);
+      console.log('Payload:', { action: "listUsers", adminId, adminPassword });
+      
       const response = await fetch(USER_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          action: "listUsers",
-          adminId: adminId,
-          adminPassword: adminPassword
-        })
+        body: JSON.stringify({ action: "listUsers", adminId, adminPassword })
       });
       
+      console.log('Response Status:', response.status);
       const data = await safeParseResponse(response);
-      console.log('📋 Users response:', data);
+      console.log('Response Data:', data);
       
       if (response.ok && data.users) {
         setUsers(data.users);
-        setSuccess(`✅ Loaded ${data.users.length} users`);
+        setSuccess(`Loaded ${data.users.length} users`);
+      } else if (data.users) {
+        setUsers(data.users);
+        setSuccess(`Loaded ${data.users.length} users`);
       } else {
-        setError(data.message || 'Failed to load users');
+        setError(data.message || `Failed to load users (Status: ${response.status})`);
       }
     } catch (err) {
-      console.error('fetchUsers error:', err);
-      setError('Network error loading users');
+      console.error('Fetch error:', err);
+      setError(`Network error: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ FIXED: Universal API with ALL admin credentials
   const executeAdminAction = async (payload) => {
     try {
       setLoading(true);
       setError('');
       setSuccess('');
-
-      console.log('🚀 Admin payload:', payload);
-
+      console.log('🚀 Executing action:', payload);
+      
       const response = await fetch(USER_API, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload)
       });
-
+      
+      console.log('Response Status:', response.status);
       const data = await safeParseResponse(response);
-      console.log('📡 Admin response:', data);
-
-      if (response.ok && data.message) {
+      console.log('Response Data:', data);
+      console.log('Response OK:', response.ok);
+      
+      if ((response.ok || response.status === 200) && data.message) {
         setSuccess(data.message);
-        fetchUsers(); // Auto-refresh list
+        console.log('✅ Action successful');
+        setTimeout(() => fetchUsers(), 500);
         resetForm();
+      } else if (data.message && (response.status === 200 || response.status === 201 || response.status === 400)) {
+        if (data.message.toLowerCase().includes('success') || data.message.toLowerCase().includes('updated') || data.message.toLowerCase().includes('created') || data.message.toLowerCase().includes('deleted')) {
+          setSuccess(data.message);
+          console.log('✅ Action successful');
+          setTimeout(() => fetchUsers(), 500);
+          resetForm();
+        } else {
+          setError(data.message || `HTTP ${response.status}`);
+          console.log('❌ Error:', data.message);
+        }
       } else {
         setError(data.message || `HTTP ${response.status}`);
+        console.log('❌ Error:', data.message);
       }
     } catch (err) {
-      console.error('Admin action error:', err);
-      setError('Network error');
+      console.error('Action error:', err);
+      setError(`Network error: ${err.message}`);
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ ALL HANDLERS WITH ADMIN CREDENTIALS
   const handleCreateUser = () => {
     if (!userId || !password) return setError('User ID and Password required');
-    executeAdminAction({
-      action: "create",
-      adminId, adminPassword,
-      userId, password
-    });
+    executeAdminAction({ action: "create", adminId, adminPassword, userId, password });
   };
 
   const handleUpdateBalance = () => {
-    if (!userId || newBalance === '') return setError('User ID and New Balance required');
-    executeAdminAction({
-      action: "updateBalance",
-      adminId, adminPassword,
-      userId,
-      newBalance: parseFloat(newBalance)
-    });
+    if (!userId || newBalance === '') return setError('User ID and Amount required');
+    executeAdminAction({ action: "updateBalance", adminId, adminPassword, userId, newBalance: parseFloat(newBalance) });
   };
 
   const handleDeleteUser = () => {
     if (!userId) return setError('User ID required');
-    executeAdminAction({
-      action: "deleteUser",
-      adminId, adminPassword,
-      userId
-    });
-  };
-
-  const handleEditUserId = () => {
-    if (!oldUserId || !newUserId) return setError('Old and New User ID required');
-    executeAdminAction({
-      action: "editUserId",
-      adminId, adminPassword,
-      oldUserId, newUserId
-    });
-  };
-
-  const handleChangePassword = () => {
-    if (!userId || !newPassword) return setError('User ID and New Password required');
-    executeAdminAction({
-      action: "changeUserPassword",
-      adminId, adminPassword,
-      userId, newPassword
-    });
+    executeAdminAction({ action: "deleteUser", adminId, adminPassword, userId });
   };
 
   const resetForm = () => {
-    setUserId(''); setPassword(''); setNewBalance(''); 
-    setOldUserId(''); setNewUserId(''); setNewPassword('');
+    setUserId('');
+    setPassword('');
+    setNewBalance('');
     setAction('list');
   };
 
@@ -165,82 +139,324 @@ const AdminPanel = ({ onLogout }) => {
     window.location.href = '/login';
   };
 
+  const containerStyle = {
+    minHeight: '100vh',
+    background: 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)',
+    fontFamily: '"Segoe UI", "Helvetica Neue", sans-serif'
+  };
+
+  const headerStyle = {
+    background: '#ffffff',
+    borderBottom: '1px solid #e0e0e0',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+    position: 'sticky',
+    top: 0,
+    zIndex: 50
+  };
+
+  const headerContentStyle = {
+    maxWidth: '1400px',
+    margin: '0 auto',
+    padding: '16px 20px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: '12px'
+  };
+
+  const logoBoxStyle = {
+    width: '50px',
+    height: '50px',
+    borderRadius: '12px',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+    flexShrink: 0
+  };
+
+  const titleStyle = {
+    fontSize: window.innerWidth < 768 ? '18px' : '28px',
+    fontWeight: '700',
+    color: '#1a202c',
+    margin: '0 0 4px 0'
+  };
+
+  const subtitleStyle = {
+    fontSize: '12px',
+    color: '#718096',
+    margin: '0',
+    fontWeight: '500',
+    display: window.innerWidth < 768 ? 'none' : 'block'
+  };
+
+  const mainStyle = {
+    maxWidth: '1400px',
+    margin: '0 auto',
+    padding: '20px',
+    minHeight: 'calc(100vh - 80px)'
+  };
+
+  const gridStyle = {
+    display: 'grid',
+    gridTemplateColumns: window.innerWidth > 1024 ? '1fr 1fr' : '1fr',
+    gap: '20px'
+  };
+
+  const cardStyle = {
+    background: '#ffffff',
+    borderRadius: '12px',
+    padding: window.innerWidth < 768 ? '16px' : '28px',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+    border: '1px solid #e5e7eb'
+  };
+
+  const cardHeaderStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '12px',
+    marginBottom: '20px'
+  };
+
+  const cardTitleStyle = {
+    fontSize: window.innerWidth < 768 ? '16px' : '20px',
+    fontWeight: '700',
+    color: '#1a202c',
+    margin: '0'
+  };
+
+  const inputStyle = {
+    width: '100%',
+    padding: window.innerWidth < 768 ? '10px' : '12px',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
+    fontSize: window.innerWidth < 768 ? '13px' : '14px',
+    transition: 'all 0.3s ease',
+    outline: 'none',
+    boxSizing: 'border-box'
+  };
+
+  const buttonPrimaryStyle = {
+    width: '100%',
+    padding: window.innerWidth < 768 ? '10px' : '12px',
+    background: '#667eea',
+    color: '#ffffff',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: window.innerWidth < 768 ? '13px' : '14px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.3s ease'
+  };
+
+  const errorMessageStyle = {
+    marginBottom: '20px',
+    background: '#fee2e2',
+    border: '1px solid #fecaca',
+    borderRadius: '10px',
+    padding: window.innerWidth < 768 ? '12px' : '16px',
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'flex-start'
+  };
+
+  const successMessageStyle = {
+    marginBottom: '20px',
+    background: '#dcfce7',
+    border: '1px solid #bbf7d0',
+    borderRadius: '10px',
+    padding: window.innerWidth < 768 ? '12px' : '16px',
+    display: 'flex',
+    gap: '12px',
+    alignItems: 'flex-start'
+  };
+
+  const userListItemStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: window.innerWidth < 768 ? '10px' : '14px',
+    background: '#f9fafb',
+    borderRadius: '8px',
+    border: '1px solid #e5e7eb',
+    marginBottom: '8px',
+    transition: 'all 0.2s ease',
+    fontSize: window.innerWidth < 768 ? '13px' : '15px'
+  };
+
+  const actionButtonsContainerStyle = {
+    display: 'grid',
+    gridTemplateColumns: window.innerWidth < 768 ? '1fr 1fr' : '1fr 1fr',
+    gap: '8px',
+    marginBottom: '20px'
+  };
+
+  const actionButtonStyle = {
+    padding: window.innerWidth < 768 ? '8px' : '10px',
+    background: '#f3f4f6',
+    color: '#374151',
+    border: 'none',
+    borderRadius: '8px',
+    fontSize: window.innerWidth < 768 ? '11px' : '12px',
+    fontWeight: '600',
+    cursor: 'pointer',
+    transition: 'all 0.2s ease'
+  };
+
+  const formContainerStyle = {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '12px'
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-amber-50 via-orange-50 to-yellow-100">
+    <div style={containerStyle}>
       {/* Header */}
-      <div className="bg-white/80 backdrop-blur-md border-b-2 border-amber-200 shadow-lg sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <div className="p-3 bg-gradient-to-r from-amber-500 to-orange-600 rounded-2xl shadow-xl">
-                <DollarSign className="w-8 h-8 text-white" />
-              </div>
-              <div>
-                <h1 className="text-3xl font-black bg-gradient-to-r from-gray-900 to-amber-800 bg-clip-text text-transparent">
-                  EV Admin Panel
-                </h1>
-                <p className="text-lg text-gray-600 font-semibold">Complete User Management</p>
-              </div>
+      <header style={headerStyle}>
+        <div style={headerContentStyle}>
+          {/* Logo Section */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+            <div style={logoBoxStyle}>
+              <DollarSign style={{ width: '28px', height: '28px', color: '#ffffff' }} />
             </div>
-            <div className="flex items-center space-x-3">
-              <button onClick={fetchUsers} disabled={loading} className="flex items-center space-x-2 px-6 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl shadow-lg transition-all disabled:opacity-50">
-                <Zap className="w-5 h-5" /><span>Refresh ({users.length})</span>
-              </button>
-              <button onClick={handleLogout} className="flex items-center space-x-2 px-6 py-2.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl shadow-lg transition-all">
-                <LogOut className="w-5 h-5" /><span>Logout</span>
-              </button>
+            <div>
+              <h1 style={titleStyle}>Admin Dashboard</h1>
+              <p style={subtitleStyle}>User Management System</p>
             </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <button 
+              onClick={fetchUsers} 
+              disabled={loading}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: window.innerWidth < 768 ? '4px' : '8px',
+                padding: window.innerWidth < 768 ? '8px 12px' : '10px 20px',
+                background: loading ? '#cbd5e1' : '#667eea',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: window.innerWidth < 768 ? '11px' : '14px',
+                fontWeight: '600',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                transition: 'all 0.3s ease',
+                opacity: loading ? 0.7 : 1,
+                boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+              }}
+            >
+              <Zap style={{ width: window.innerWidth < 768 ? '14px' : '18px', height: window.innerWidth < 768 ? '14px' : '18px' }} />
+              <span style={{ display: window.innerWidth < 768 ? 'none' : 'inline' }}>Refresh</span>
+            </button>
+
+            <button 
+              onClick={handleLogout}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: window.innerWidth < 768 ? '4px' : '8px',
+                padding: window.innerWidth < 768 ? '8px 12px' : '10px 20px',
+                background: '#ef4444',
+                color: '#ffffff',
+                border: 'none',
+                borderRadius: '8px',
+                fontSize: window.innerWidth < 768 ? '11px' : '14px',
+                fontWeight: '600',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)'
+              }}
+            >
+              <LogOut style={{ width: window.innerWidth < 768 ? '14px' : '18px', height: window.innerWidth < 768 ? '14px' : '18px' }} />
+              <span style={{ display: window.innerWidth < 768 ? 'none' : 'inline' }}>Logout</span>
+            </button>
           </div>
         </div>
-      </div>
+      </header>
 
-      <div className="max-w-7xl mx-auto px-6 py-8">
-        {/* Messages */}
+      {/* Main Content */}
+      <main style={mainStyle}>
+        {/* Error Message */}
         {error && (
-          <div className="mb-8 bg-red-50 border-2 border-red-200 rounded-3xl p-6 flex items-center animate-pulse">
-            <AlertCircle className="w-7 h-7 text-red-500 mr-4 flex-shrink-0" />
+          <div style={errorMessageStyle}>
+            <AlertCircle style={{ width: '24px', height: '24px', color: '#dc2626', flexShrink: 0, marginTop: '2px' }} />
             <div>
-              <h3 className="font-bold text-xl text-red-900 mb-1">Error</h3>
-              <p className="text-red-700">{error}</p>
-            </div>
-          </div>
-        )}
-        {success && (
-          <div className="mb-8 bg-emerald-50 border-2 border-emerald-200 rounded-3xl p-6 flex items-center">
-            <CheckCircle className="w-7 h-7 text-emerald-500 mr-4 flex-shrink-0" />
-            <div>
-              <h3 className="font-bold text-xl text-emerald-900 mb-1">Success!</h3>
-              <p className="text-emerald-700">{success}</p>
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#991b1b', margin: '0 0 4px 0' }}>Error</h3>
+              <p style={{ fontSize: '14px', color: '#7f1d1d', margin: '0' }}>{error}</p>
             </div>
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* User List */}
-          <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-gray-200/50">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-              <User className="w-8 h-8 mr-3 text-amber-600" />
-              All Users ({users.length})
-            </h2>
-            
+        {/* Success Message */}
+        {success && (
+          <div style={successMessageStyle}>
+            <CheckCircle style={{ width: '24px', height: '24px', color: '#16a34a', flexShrink: 0, marginTop: '2px' }} />
+            <div>
+              <h3 style={{ fontSize: '16px', fontWeight: '600', color: '#166534', margin: '0 0 4px 0' }}>Success</h3>
+              <p style={{ fontSize: '14px', color: '#15803d', margin: '0' }}>{success}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Content Grid */}
+        <div style={gridStyle}>
+          {/* Users List Card */}
+          <div style={cardStyle}>
+            <div style={cardHeaderStyle}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '8px',
+                background: '#ede9fe',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <User style={{ width: '24px', height: '24px', color: '#7c3aed' }} />
+              </div>
+              <h2 style={cardTitleStyle}>All Users ({users.length})</h2>
+            </div>
+
             {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="w-12 h-12 border-4 border-amber-200 border-t-amber-500 rounded-full animate-spin"></div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 20px' }}>
+                <div style={{
+                  width: '40px',
+                  height: '40px',
+                  border: '4px solid #e5e7eb',
+                  borderTopColor: '#667eea',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite'
+                }}></div>
               </div>
             ) : users.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">
-                <User className="w-16 h-16 mx-auto mb-4 opacity-40" />
-                <p className="text-xl">No users found</p>
+              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>
+                <User style={{ width: '48px', height: '48px', margin: '0 auto 16px', opacity: 0.3 }} />
+                <p style={{ fontSize: '16px', margin: '0' }}>No users found</p>
               </div>
             ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
+              <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
                 {users.map((user, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-2xl border-l-4 border-emerald-400 hover:shadow-md transition-all">
+                  <div key={index} style={userListItemStyle}>
                     <div>
-                      <div className="font-bold text-lg text-gray-900">{user.userId}</div>
-                      <div className="text-sm text-gray-600">₹{parseFloat(user.balance || 0).toFixed(2)}</div>
+                      <div style={{ fontSize: '15px', fontWeight: '600', color: '#1a202c' }}>
+                        {user.userId}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '4px' }}>
+                        Balance: ₹{parseFloat(user.balance || 0).toFixed(2)}
+                      </div>
                     </div>
-                    <span className="px-3 py-1 bg-emerald-100 text-emerald-800 rounded-full text-xs font-bold">
+                    <span style={{
+                      padding: '4px 12px',
+                      background: '#d1fae5',
+                      color: '#065f46',
+                      borderRadius: '20px',
+                      fontSize: '12px',
+                      fontWeight: '600'
+                    }}>
                       Active
                     </span>
                   </div>
@@ -249,92 +465,63 @@ const AdminPanel = ({ onLogout }) => {
             )}
           </div>
 
-          {/* Action Panel */}
-          <div className="bg-white/70 backdrop-blur-xl rounded-3xl p-8 shadow-2xl border border-gray-200/50">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-              <Edit3 className="w-8 h-8 mr-3 text-blue-600" />
-              Admin Actions
-            </h2>
+          {/* Admin Actions Card */}
+          <div style={cardStyle}>
+            <div style={cardHeaderStyle}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '8px',
+                background: '#dbeafe',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                <Plus style={{ width: '24px', height: '24px', color: '#2563eb' }} />
+              </div>
+              <h2 style={cardTitleStyle}>Admin Actions</h2>
+            </div>
 
-            {/* Action Buttons */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-6">
-              {[
-                {key: 'list', label: 'List Users', icon: User, color: 'blue'},
-                {key: 'create', label: 'Create User', icon: Plus, color: 'emerald'},
-                {key: 'updateBalance', label: 'Add Balance', icon: DollarSign, color: 'amber'},
-                {key: 'deleteUser', label: 'Delete User', icon: Trash2, color: 'red'},
-                {key: 'editUserId', label: 'Edit User ID', icon: Edit3, color: 'indigo'},
-                {key: 'changePassword', label: 'Reset Password', icon: Lock, color: 'purple'}
-              ].map(({key, label, icon: Icon, color}) => (
-                <button
-                  key={key}
-                  onClick={() => setAction(key)}
-                  className={`p-4 rounded-2xl font-semibold transition-all flex items-center space-x-3 ${
-                    action === key
-                      ? `bg-gradient-to-r from-${color}-500 to-${color}-600 text-white shadow-lg shadow-${color}-500/25`
-                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700 hover:shadow-md'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="text-sm">{label}</span>
-                </button>
-              ))}
+            {/* Action Buttons Grid */}
+            <div style={actionButtonsContainerStyle}>
+              <button onClick={() => setAction('list')} style={{ ...actionButtonStyle, background: action === 'list' ? '#667eea' : '#f3f4f6', color: action === 'list' ? '#fff' : '#374151' }}>List Users</button>
+              <button onClick={() => setAction('create')} style={{ ...actionButtonStyle, background: action === 'create' ? '#10b981' : '#f3f4f6', color: action === 'create' ? '#fff' : '#374151' }}>Create User</button>
+              <button onClick={() => setAction('updateBalance')} style={{ ...actionButtonStyle, background: action === 'updateBalance' ? '#f59e0b' : '#f3f4f6', color: action === 'updateBalance' ? '#fff' : '#374151' }}>Add Balance</button>
+              <button onClick={() => setAction('deleteUser')} style={{ ...actionButtonStyle, background: action === 'deleteUser' ? '#ef4444' : '#f3f4f6', color: action === 'deleteUser' ? '#fff' : '#374151' }}>Delete User</button>
             </div>
 
             {/* Dynamic Forms */}
-            <div className="space-y-4">
-              {action === 'create' && (
-                <>
-                  <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="user2" className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200" />
-                  <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="1234" className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-emerald-500 focus:ring-2 focus:ring-emerald-200" />
-                  <button onClick={handleCreateUser} disabled={loading || !userId || !password} className="w-full bg-gradient-to-r from-emerald-500 to-green-600 text-white font-bold py-4 px-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all disabled:opacity-50">
-                    {loading ? 'Creating...' : '✅ Create User'}
-                  </button>
-                </>
-              )}
+            {action === 'create' && (
+              <div style={formContainerStyle}>
+                <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="User ID" style={inputStyle} />
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" style={inputStyle} />
+                <button onClick={handleCreateUser} disabled={loading || !userId || !password} style={{ ...buttonPrimaryStyle, background: '#10b981', opacity: loading || !userId || !password ? 0.6 : 1 }}>✅ Create User</button>
+              </div>
+            )}
 
-              {action === 'updateBalance' && (
-                <>
-                  <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="user2" className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-amber-500 focus:ring-2 focus:ring-amber-200" />
-                  <input type="number" value={newBalance} onChange={(e) => setNewBalance(e.target.value)} placeholder="100" className="w-full p-4 border-2 border-gray-200 rounded-2xl focus:border-amber-500 focus:ring-2 focus:ring-amber-200" />
-                  <button onClick={handleUpdateBalance} disabled={loading || !userId || newBalance === ''} className="w-full bg-gradient-to-r from-amber-500 to-orange-600 text-white font-bold py-4 px-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all disabled:opacity-50">
-                    {loading ? 'Updating...' : '💰 Add Balance'}
-                  </button>
-                </>
-              )}
+            {action === 'updateBalance' && (
+              <div style={formContainerStyle}>
+                <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="User ID" style={inputStyle} />
+                <input type="number" value={newBalance} onChange={(e) => setNewBalance(e.target.value)} placeholder="Amount" style={inputStyle} />
+                <button onClick={handleUpdateBalance} disabled={loading || !userId || newBalance === ''} style={{ ...buttonPrimaryStyle, background: '#f59e0b', opacity: loading || !userId || newBalance === '' ? 0.6 : 1 }}>💰 Add Balance</button>
+              </div>
+            )}
 
-              {action === 'deleteUser' && (
-                <>
-                  <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="user2" className="w-full p-4 border-2 border-red-200 rounded-2xl focus:border-red-500 focus:ring-2 focus:ring-red-200" />
-                  <button onClick={handleDeleteUser} disabled={loading || !userId} className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white font-bold py-4 px-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all disabled:opacity-50">
-                    {loading ? 'Deleting...' : '🗑️ Delete User'}
-                  </button>
-                </>
-              )}
-
-              {action === 'editUserId' && (
-                <>
-                  <input type="text" value={oldUserId} onChange={(e) => setOldUserId(e.target.value)} placeholder="user2" className="w-full p-4 border-2 border-gray-200 rounded-2xl" />
-                  <input type="text" value={newUserId} onChange={(e) => setNewUserId(e.target.value)} placeholder="user3" className="w-full p-4 border-2 border-gray-200 rounded-2xl" />
-                  <button onClick={handleEditUserId} disabled={loading || !oldUserId || !newUserId} className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-bold py-4 px-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all disabled:opacity-50">
-                    {loading ? 'Updating...' : '🔄 Change User ID'}
-                  </button>
-                </>
-              )}
-
-              {action === 'changePassword' && (
-                <>
-                  <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="user2" className="w-full p-4 border-2 border-gray-200 rounded-2xl" />
-                  <input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="newpass123" className="w-full p-4 border-2 border-gray-200 rounded-2xl" />
-                  <button onClick={handleChangePassword} disabled={loading || !userId || !newPassword} className="w-full bg-gradient-to-r from-purple-500 to-pink-600 text-white font-bold py-4 px-6 rounded-2xl shadow-xl hover:shadow-2xl transition-all disabled:opacity-50">
-                    {loading ? 'Updating...' : '🔐 Reset Password'}
-                  </button>
-                </>
-              )}
-            </div>
+            {action === 'deleteUser' && (
+              <div style={formContainerStyle}>
+                <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="User ID" style={inputStyle} />
+                <button onClick={handleDeleteUser} disabled={loading || !userId} style={{ ...buttonPrimaryStyle, background: '#ef4444', opacity: loading || !userId ? 0.6 : 1 }}>🗑️ Delete User</button>
+              </div>
+            )}
           </div>
         </div>
-      </div>
+      </main>
+
+      <style>{`
+        @keyframes spin {
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   );
 };
