@@ -1,60 +1,37 @@
 import React, { useState } from 'react';
 
-// ============================================
-// API CONFIGURATION
-// ============================================
 const API_BASE = 'https://o27vgpfcrh.execute-api.ap-south-1.amazonaws.com/USER_LOGIN_EV_S1';
 
-// ============================================
-// MAIN LOGIN PAGE COMPONENT
-// ============================================
 const LoginPage = ({ onLoginSuccess = () => {} }) => {
-  // ============================================
-  // STATE MANAGEMENT
-  // ============================================
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // ============================================
-  // HARDCODED CREDENTIALS
-  // ============================================
   const SECRET_USER_ID = 'Office';
   const SECRET_PASSWORD = 'Office@100';
   const ADMIN_ID = 'admin';
   const ADMIN_PASSWORD = 'admin123';
 
-  // ============================================
-  // MAIN LOGIN HANDLER
-  // ============================================
   const handleLogin = async () => {
     console.log('=== LOGIN ATTEMPT STARTED ===');
     console.log('User ID entered:', userId);
 
-    // Clear previous errors
     setError('');
-    // Start loading
     setLoading(true);
 
     try {
-      // ============================================
-      // CONDITION 1: CHECK ADMIN CREDENTIALS
-      // ============================================
       if (userId === ADMIN_ID && password === ADMIN_PASSWORD) {
         console.log('✅ ADMIN CREDENTIALS MATCHED');
 
-        // Set localStorage values
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('userRole', 'admin');
         localStorage.setItem('currentUserId', ADMIN_ID);
 
         console.log('📝 localStorage updated for admin');
 
-        // Stop loading indicator
         setLoading(false);
 
-        // Call parent component callback
         setTimeout(() => {
           console.log('🚀 CALLING onLoginSuccess for ADMIN');
           onLoginSuccess('admin', { userId: ADMIN_ID, role: 'admin' });
@@ -63,23 +40,17 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
         return;
       }
 
-      // ============================================
-      // CONDITION 2: CHECK OFFICE CREDENTIALS
-      // ============================================
       if (userId === SECRET_USER_ID && password === SECRET_PASSWORD) {
         console.log('✅ OFFICE CREDENTIALS MATCHED');
 
-        // Set localStorage values
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('userRole', 'user');
         localStorage.setItem('currentUserId', SECRET_USER_ID);
 
         console.log('📝 localStorage updated for office user');
 
-        // Stop loading indicator
         setLoading(false);
 
-        // Call parent component callback
         setTimeout(() => {
           console.log('🚀 CALLING onLoginSuccess for OFFICE USER');
           onLoginSuccess('user', { userId: SECRET_USER_ID, role: 'user' });
@@ -88,9 +59,6 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
         return;
       }
 
-      // ============================================
-      // CONDITION 3: TRY API LOGIN
-      // ============================================
       console.log('📡 Trying API login...');
 
       const response = await fetch(`${API_BASE}`, {
@@ -111,14 +79,11 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
       const data = await response.json();
       console.log('📡 API Response Data:', data);
 
-      // Check if login was successful
       if (response.ok && (data.success || data.userId || data.message === 'Login successful')) {
         console.log('✅ API LOGIN SUCCESSFUL');
 
-        // Determine user role
         const role = data.role || (userId.toLowerCase() === 'admin' ? 'admin' : 'user');
 
-        // Set localStorage values
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('userRole', role);
         localStorage.setItem('currentUserId', userId);
@@ -126,109 +91,105 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
 
         console.log('📝 localStorage updated from API');
 
-        // Prepare user data
         const userData = {
           userId: userId,
           role: role,
           balance: data.balance
         };
 
-        // Stop loading indicator
         setLoading(false);
 
-        // Call parent component callback
         setTimeout(() => {
           console.log('🚀 CALLING onLoginSuccess for API USER');
           onLoginSuccess(role, userData);
         }, 100);
       } else {
-        // API login failed
         console.log('❌ API LOGIN FAILED');
         const errorMsg = data.message || `Login failed with status ${response.status}`;
         setError(errorMsg);
         setLoading(false);
       }
     } catch (err) {
-      // Network or other errors
       console.error('💥 LOGIN ERROR:', err);
       setError('Network error. Please check your connection.');
       setLoading(false);
     }
   };
 
-  // ============================================
-  // HANDLE ENTER KEY PRESS
-  // ============================================
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !loading) {
       handleLogin();
     }
   };
 
-  // ============================================
-  // RENDER UI
-  // ============================================
   return (
-    <div
-      style={{
+    <div style={{
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #f0f0f0 0%, #f8f8f8 50%, #ffffff 100%)',
+      padding: '20px',
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+    }}>
+      <div style={{
         display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        minHeight: '100vh',
-        background: 'linear-gradient(135deg, #f0f0f0 0%, #f8f8f8 50%, #ffffff 100%)',
-        padding: '40px 20px',
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
-      }}
-    >
-      {/* MAIN CARD CONTAINER */}
-      <div
-        style={{
+        width: '100%',
+        maxWidth: '1100px',
+        minHeight: '600px',
+        borderRadius: '20px',
+        overflow: 'hidden',
+        boxShadow: '0 30px 80px rgba(0, 0, 0, 0.15), 0 10px 30px rgba(0, 0, 0, 0.1)',
+        flexDirection: 'row',
+        '@media (maxWidth: 768px)': {
+          flexDirection: 'column',
+          minHeight: 'auto',
+          borderRadius: '16px'
+        }
+      }}>
+        {/* LEFT SIDE - WHITE SECTION */}
+        <div style={{
+          flex: 1,
+          background: '#ffffff',
+          padding: '60px 50px',
           display: 'flex',
-          width: '100%',
-          maxWidth: '1100px',
-          minHeight: '600px',
-          borderRadius: '20px',
-          overflow: 'hidden',
-          boxShadow: '0 30px 80px rgba(0, 0, 0, 0.15), 0 10px 30px rgba(0, 0, 0, 0.1)'
-        }}
-      >
-        {/* LEFT SIDE - WHITE SECTION (COMPANY INFO) */}
-        <div
-          style={{
-            flex: '1',
-            background: '#ffffff',
-            padding: '60px 50px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'relative'
-          }}
-        >
-          {/* DECORATIVE ELEMENT */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '40px',
-              right: '40px',
-              width: '60px',
-              height: '60px',
-              border: '2px solid #f0f0f0',
-              borderRadius: '12px',
-              transform: 'rotate(45deg)'
-            }}
-          />
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          position: 'relative',
+          minWidth: 0,
+          '@media (maxWidth: 768px)': {
+            padding: '40px 30px',
+            minHeight: 'auto'
+          },
+          '@media (maxWidth: 480px)': {
+            padding: '30px 20px'
+          }
+        }}>
+          <div style={{
+            position: 'absolute',
+            top: '40px',
+            right: '40px',
+            width: '60px',
+            height: '60px',
+            border: '2px solid #f0f0f0',
+            borderRadius: '12px',
+            transform: 'rotate(45deg)',
+            '@media (maxWidth: 768px)': {
+              top: '20px',
+              right: '20px',
+              width: '40px',
+              height: '40px'
+            }
+          }} />
 
-          {/* CONTENT WRAPPER */}
-          <div
-            style={{
-              width: '100%',
-              maxWidth: '420px',
-              textAlign: 'center'
-            }}
-          >
-            {/* COMPANY LOGO */}
-            <div style={{ marginBottom: '50px' }}>
+          <div style={{
+            width: '100%',
+            maxWidth: '420px',
+            textAlign: 'center'
+          }}>
+            {/* LOGO */}
+            <div style={{ marginBottom: '50px', '@media (maxWidth: 768px)': { marginBottom: '30px' } }}>
               <img
                 src="/logo_160126.jpeg"
                 alt="AlphaTech Solutions"
@@ -237,100 +198,122 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
                   height: 'auto',
                   maxHeight: '120px',
                   objectFit: 'contain',
-                  filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1))'
+                  filter: 'drop-shadow(0 4px 8px rgba(0, 0, 0, 0.1))',
+                  '@media (maxWidth: 768px)': {
+                    maxHeight: '80px'
+                  }
                 }}
               />
             </div>
 
-            {/* COMPANY TITLE */}
-            <h1
-              style={{
-                fontSize: '36px',
-                fontWeight: '700',
-                color: '#1a1a1a',
-                marginBottom: '16px',
-                lineHeight: '1.2',
-                margin: '0 0 16px 0'
-              }}
-            >
+            {/* TITLE */}
+            <h1 style={{
+              fontSize: '36px',
+              fontWeight: '700',
+              color: '#1a1a1a',
+              margin: '0 0 16px 0',
+              lineHeight: '1.2',
+              '@media (maxWidth: 768px)': {
+                fontSize: '28px'
+              },
+              '@media (maxWidth: 480px)': {
+                fontSize: '24px',
+                marginBottom: '12px'
+              }
+            }}>
               EV Charging Station
             </h1>
 
-            {/* ACCENT LINE - RED */}
-            <div
-              style={{
-                width: '80px',
-                height: '4px',
-                background: 'linear-gradient(90deg, #dc143c 0%, #a00000 100%)',
-                margin: '0 auto 24px',
-                borderRadius: '2px'
-              }}
-            />
+            {/* ACCENT LINE */}
+            <div style={{
+              width: '80px',
+              height: '4px',
+              background: 'linear-gradient(90deg, #dc143c 0%, #a00000 100%)',
+              margin: '0 auto 24px',
+              borderRadius: '2px'
+            }} />
 
             {/* SUBTITLE */}
-            <p
-              style={{
-                fontSize: '22px',
-                fontWeight: '600',
-                color: '#333333',
-                marginBottom: '12px',
-                margin: '0 0 12px 0'
-              }}
-            >
+            <p style={{
+              fontSize: '22px',
+              fontWeight: '600',
+              color: '#333333',
+              margin: '0 0 12px 0',
+              '@media (maxWidth: 768px)': {
+                fontSize: '18px'
+              },
+              '@media (maxWidth: 480px)': {
+                fontSize: '16px'
+              }
+            }}>
               Smart Charging Control
             </p>
 
             {/* DESCRIPTION */}
-            <p
-              style={{
-                fontSize: '15px',
-                color: '#666666',
-                lineHeight: '1.7',
-                marginBottom: '40px',
-                margin: '0 0 40px 0'
-              }}
-            >
+            <p style={{
+              fontSize: '15px',
+              color: '#666666',
+              lineHeight: '1.7',
+              margin: '0 0 40px 0',
+              '@media (maxWidth: 768px)': {
+                fontSize: '14px',
+                marginBottom: '30px'
+              },
+              '@media (maxWidth: 480px)': {
+                fontSize: '13px',
+                marginBottom: '24px'
+              }
+            }}>
               Enterprise solution for efficient EV charging management and real-time monitoring
             </p>
 
             {/* FEATURES LIST */}
-            <div style={{ textAlign: 'left', display: 'inline-block' }}>
+            <div style={{
+              textAlign: 'left',
+              display: 'inline-block',
+              '@media (maxWidth: 768px)': {
+                width: '100%',
+                maxWidth: '100%'
+              }
+            }}>
               {[
                 { icon: '⚡', text: 'Fast Charging Technology' },
                 { icon: '🔒', text: 'Secure Authentication' },
                 { icon: '📊', text: 'Real-time Monitoring' },
                 { icon: '🌍', text: 'Network Coverage' }
               ].map((item, idx) => (
-                <div
-                  key={idx}
-                  style={{
+                <div key={idx} style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  marginBottom: '14px',
+                  '@media (maxWidth: 480px)': {
+                    marginBottom: '10px'
+                  }
+                }}>
+                  <div style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    background: 'linear-gradient(135deg, #dc143c 0%, #a00000 100%)',
+                    color: '#ffffff',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px',
-                    marginBottom: '14px'
-                  }}
-                >
-                  {/* FEATURE ICON CIRCLE - RED */}
-                  <div
-                    style={{
-                      width: '24px',
-                      height: '24px',
-                      borderRadius: '50%',
-                      background: 'linear-gradient(135deg, #dc143c 0%, #a00000 100%)',
-                      color: '#ffffff',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      flexShrink: 0,
-                      boxShadow: '0 2px 8px rgba(220, 20, 60, 0.3)'
-                    }}
-                  >
+                    justifyContent: 'center',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    flexShrink: 0,
+                    boxShadow: '0 2px 8px rgba(220, 20, 60, 0.3)'
+                  }}>
                     {item.icon}
                   </div>
-                  {/* FEATURE TEXT */}
-                  <span style={{ fontSize: '15px', color: '#444444' }}>
+                  <span style={{
+                    fontSize: '15px',
+                    color: '#444444',
+                    '@media (maxWidth: 480px)': {
+                      fontSize: '14px'
+                    }
+                  }}>
                     {item.text}
                   </span>
                 </div>
@@ -340,110 +323,122 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
         </div>
 
         {/* RIGHT SIDE - RED SECTION (LOGIN FORM) */}
-        <div
-          style={{
-            flex: '1',
-            background: 'linear-gradient(135deg, #dc143c 0%, #b01030 50%, #8b0000 100%)',
-            padding: '60px 50px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'center',
-            alignItems: 'center',
-            position: 'relative'
-          }}
-        >
-          {/* DECORATIVE PATTERN OVERLAY */}
-          <div
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              backgroundImage: `
-                linear-gradient(30deg, rgba(0,0,0,0.05) 12%, transparent 12.5%, transparent 87%, rgba(0,0,0,0.05) 87.5%, rgba(0,0,0,0.05)),
-                linear-gradient(150deg, rgba(0,0,0,0.05) 12%, transparent 12.5%, transparent 87%, rgba(0,0,0,0.05) 87.5%, rgba(0,0,0,0.05))
-              `,
-              backgroundSize: '80px 140px',
-              backgroundPosition: '0 0, 40px 70px',
-              opacity: 0.3,
-              pointerEvents: 'none'
-            }}
-          />
+        <div style={{
+          flex: 1,
+          background: 'linear-gradient(135deg, #dc143c 0%, #b01030 50%, #8b0000 100%)',
+          padding: '60px 50px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'center',
+          alignItems: 'center',
+          position: 'relative',
+          minWidth: 0,
+          '@media (maxWidth: 768px)': {
+            padding: '40px 30px',
+            minHeight: 'auto'
+          },
+          '@media (maxWidth: 480px)': {
+            padding: '30px 20px'
+          }
+        }}>
+          {/* DECORATIVE PATTERN */}
+          <div style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundImage: `
+              linear-gradient(30deg, rgba(0,0,0,0.05) 12%, transparent 12.5%, transparent 87%, rgba(0,0,0,0.05) 87.5%, rgba(0,0,0,0.05)),
+              linear-gradient(150deg, rgba(0,0,0,0.05) 12%, transparent 12.5%, transparent 87%, rgba(0,0,0,0.05) 87.5%, rgba(0,0,0,0.05))
+            `,
+            backgroundSize: '80px 140px',
+            backgroundPosition: '0 0, 40px 70px',
+            opacity: 0.3,
+            pointerEvents: 'none'
+          }} />
 
           {/* FORM CONTAINER */}
-          <div
-            style={{
-              width: '100%',
-              maxWidth: '400px',
-              position: 'relative',
-              zIndex: 1
-            }}
-          >
+          <div style={{
+            width: '100%',
+            maxWidth: '400px',
+            position: 'relative',
+            zIndex: 1
+          }}>
             {/* LOGIN HEADER */}
-            <div style={{ textAlign: 'center', marginBottom: '40px' }}>
-              <h2
-                style={{
-                  fontSize: '32px',
-                  fontWeight: '700',
-                  color: '#ffffff',
-                  marginBottom: '8px',
-                  margin: '0 0 8px 0'
-                }}
-              >
+            <div style={{
+              textAlign: 'center',
+              marginBottom: '40px',
+              '@media (maxWidth: 480px)': {
+                marginBottom: '30px'
+              }
+            }}>
+              <h2 style={{
+                fontSize: '32px',
+                fontWeight: '700',
+                color: '#ffffff',
+                margin: '0 0 8px 0',
+                '@media (maxWidth: 768px)': {
+                  fontSize: '28px'
+                },
+                '@media (maxWidth: 480px)': {
+                  fontSize: '24px'
+                }
+              }}>
                 Welcome Back
               </h2>
-              <p
-                style={{
-                  fontSize: '15px',
-                  color: 'rgba(255, 255, 255, 0.8)',
-                  margin: '0'
-                }}
-              >
+              <p style={{
+                fontSize: '15px',
+                color: 'rgba(255, 255, 255, 0.8)',
+                margin: '0',
+                '@media (maxWidth: 480px)': {
+                  fontSize: '13px'
+                }
+              }}>
                 Sign in to access your dashboard
               </p>
             </div>
 
-            {/* ERROR MESSAGE DISPLAY */}
+            {/* ERROR MESSAGE */}
             {error && (
-              <div
-                style={{
-                  background: 'rgba(0, 0, 0, 0.3)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  borderRadius: '10px',
-                  padding: '14px 16px',
-                  marginBottom: '24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '10px',
-                  animation: 'slideDown 0.3s ease'
-                }}
-              >
+              <div style={{
+                background: 'rgba(0, 0, 0, 0.3)',
+                border: '1px solid rgba(255, 255, 255, 0.3)',
+                borderRadius: '10px',
+                padding: '14px 16px',
+                marginBottom: '24px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                animation: 'slideDown 0.3s ease'
+              }}>
                 <span style={{ fontSize: '18px', flexShrink: 0 }}>⚠️</span>
-                <span
-                  style={{
-                    fontSize: '14px',
-                    color: '#ffffff',
-                    lineHeight: '1.4'
-                  }}
-                >
+                <span style={{
+                  fontSize: '14px',
+                  color: '#ffffff',
+                  lineHeight: '1.4',
+                  '@media (maxWidth: 480px)': {
+                    fontSize: '12px'
+                  }
+                }}>
                   {error}
                 </span>
               </div>
             )}
 
-            {/* USER ID INPUT FIELD */}
+            {/* USER ID INPUT */}
             <div style={{ marginBottom: '24px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  marginBottom: '10px',
-                  color: '#ffffff',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  letterSpacing: '0.5px'
-                }}
-              >
+              <label style={{
+                display: 'block',
+                marginBottom: '10px',
+                color: '#ffffff',
+                fontSize: '14px',
+                fontWeight: '600',
+                letterSpacing: '0.5px',
+                '@media (maxWidth: 480px)': {
+                  fontSize: '12px'
+                }
+              }}>
                 USER ID
               </label>
               <input
@@ -467,7 +462,11 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
                   outline: 'none',
                   fontWeight: '500',
                   opacity: loading ? 0.6 : 1,
-                  cursor: loading ? 'not-allowed' : 'text'
+                  cursor: loading ? 'not-allowed' : 'text',
+                  '@media (maxWidth: 480px)': {
+                    padding: '14px 16px',
+                    fontSize: '16px'
+                  }
                 }}
                 onFocus={(e) => {
                   if (!loading) {
@@ -486,18 +485,19 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
               />
             </div>
 
-            {/* PASSWORD INPUT FIELD */}
+            {/* PASSWORD INPUT */}
             <div style={{ marginBottom: '32px' }}>
-              <label
-                style={{
-                  display: 'block',
-                  marginBottom: '10px',
-                  color: '#ffffff',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  letterSpacing: '0.5px'
-                }}
-              >
+              <label style={{
+                display: 'block',
+                marginBottom: '10px',
+                color: '#ffffff',
+                fontSize: '14px',
+                fontWeight: '600',
+                letterSpacing: '0.5px',
+                '@media (maxWidth: 480px)': {
+                  fontSize: '12px'
+                }
+              }}>
                 PASSWORD
               </label>
               <input
@@ -521,7 +521,11 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
                   outline: 'none',
                   fontWeight: '500',
                   opacity: loading ? 0.6 : 1,
-                  cursor: loading ? 'not-allowed' : 'text'
+                  cursor: loading ? 'not-allowed' : 'text',
+                  '@media (maxWidth: 480px)': {
+                    padding: '14px 16px',
+                    fontSize: '16px'
+                  }
                 }}
                 onFocus={(e) => {
                   if (!loading) {
@@ -557,7 +561,12 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
                 transition: 'all 0.3s ease',
                 letterSpacing: '1px',
                 opacity: loading ? 0.7 : 1,
-                boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2)'
+                boxShadow: '0 6px 20px rgba(0, 0, 0, 0.2)',
+                '@media (maxWidth: 480px)': {
+                  padding: '14px',
+                  fontSize: '15px',
+                  letterSpacing: '0.5px'
+                }
               }}
               onMouseOver={(e) => {
                 if (!loading) {
@@ -573,24 +582,20 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
               }}
             >
               {loading ? (
-                <span
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '12px'
-                  }}
-                >
-                  <span
-                    style={{
-                      width: '18px',
-                      height: '18px',
-                      border: '2px solid rgba(255, 255, 255, 0.3)',
-                      borderTopColor: '#ffffff',
-                      borderRadius: '50%',
-                      animation: 'spin 0.7s linear infinite'
-                    }}
-                  />
+                <span style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '12px'
+                }}>
+                  <span style={{
+                    width: '18px',
+                    height: '18px',
+                    border: '2px solid rgba(255, 255, 255, 0.3)',
+                    borderTopColor: '#ffffff',
+                    borderRadius: '50%',
+                    animation: 'spin 0.7s linear infinite'
+                  }} />
                   SIGNING IN...
                 </span>
               ) : (
@@ -600,14 +605,15 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
 
             {/* FOOTER TEXT */}
             <div style={{ marginTop: '30px', textAlign: 'center' }}>
-              <p
-                style={{
-                  fontSize: '12px',
-                  color: 'rgba(255, 255, 255, 0.7)',
-                  lineHeight: '1.5',
-                  margin: '0'
-                }}
-              >
+              <p style={{
+                fontSize: '12px',
+                color: 'rgba(255, 255, 255, 0.7)',
+                lineHeight: '1.5',
+                margin: '0',
+                '@media (maxWidth: 480px)': {
+                  fontSize: '11px'
+                }
+              }}>
                 Secured by enterprise-grade encryption
               </p>
             </div>
@@ -615,7 +621,7 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
         </div>
       </div>
 
-      {/* ANIMATIONS & GLOBAL STYLES */}
+      {/* GLOBAL STYLES */}
       <style>{`
         @keyframes spin {
           to { transform: rotate(360deg); }
@@ -645,14 +651,15 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
         }
 
         @media (max-width: 768px) {
-          div[style*="flex: 1"] {
-            padding: 40px 30px !important;
+          div {
+            max-width: 100% !important;
           }
         }
 
         @media (max-width: 600px) {
-          div[style*="flex: 1"] {
-            padding: 30px 20px !important;
+          body {
+            margin: 0;
+            padding: 0;
           }
         }
       `}</style>
