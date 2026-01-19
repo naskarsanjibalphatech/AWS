@@ -113,9 +113,18 @@ const AdminPanel = ({ onLogout }) => {
   };
 
   const handleUpdateBalance = () => {
-    if (!userId || newBalance === '') return setError('User ID and Amount required');
-    executeAdminAction({ action: "updateBalance", adminId, adminPassword, userId, newBalance: parseFloat(newBalance) });
-  };
+  if (!userId || newBalance === '')
+    return setError('User ID and Amount required');
+
+  executeAdminAction({
+    action: "rechargeBalance",   // ✅ CHANGE HERE
+    adminId,
+    adminPassword,
+    userId,
+    amount: parseFloat(newBalance) // ✅ CHANGE HERE
+  });
+};
+
 
   const handleDeleteUser = () => {
     if (!userId) return setError('User ID required');
