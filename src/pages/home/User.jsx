@@ -3,6 +3,8 @@ import { Zap, Power, Square, Wifi, WifiOff, RotateCcw, AlertCircle, DollarSign, 
 
 const UserDashboard = ({ onLogout }) => {
   const [userId, setUserId] = useState(localStorage.getItem('currentUserId') || '');
+  const [userName] = useState(localStorage.getItem('userName') || '');
+
   const [userBalance, setUserBalance] = useState(parseFloat(localStorage.getItem('userBalance')) || 0);
   const [chargingStatus, setChargingStatus] = useState(null);
   const [kwhConsumed, setKwhConsumed] = useState(null);
@@ -166,9 +168,15 @@ const UserDashboard = ({ onLogout }) => {
                   </div>
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-lg sm:text-2xl lg:text-3xl font-black text-red-600">
-  EV CHARGE STATION
-</h1>
+  <h1 className="text-lg sm:text-2xl lg:text-3xl font-black text-red-600">
+    EV CHARGE STATION
+  </h1>
+
+  {/* ✅ ADD THIS LINE */}
+  <p className="text-sm sm:text-base font-bold text-black mt-1">
+    WELCOME {userName}
+  </p>
+
 
                   <div className="flex items-center space-x-1.5 sm:space-x-2 mt-0.5 sm:mt-1">
                     <span className="text-xs text-red-600 font-mono">USER ID:</span>

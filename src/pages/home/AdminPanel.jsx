@@ -10,7 +10,10 @@ const AdminPanel = ({ onLogout }) => {
   const [adminId] = useState('admin');
   const [adminPassword] = useState('admin123');
   const [userId, setUserId] = useState('');
+  const [name, setName] = useState('');   // ✅ MISSING LINE (ADD THIS)
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+
   const [newBalance, setNewBalance] = useState('');
 
   const USER_API = "https://o27vgpfcrh.execute-api.ap-south-1.amazonaws.com/USER_LOGIN_EV_S1";
@@ -109,7 +112,15 @@ const AdminPanel = ({ onLogout }) => {
 
   const handleCreateUser = () => {
     if (!userId || !password) return setError('User ID and Password required');
-    executeAdminAction({ action: "create", adminId, adminPassword, userId, password });
+    executeAdminAction({
+  action: "create",
+  adminId,
+  adminPassword,
+  userId,     // PLC uses this
+  name,       // UI uses this ✅
+  password
+});
+
   };
 
   const handleUpdateBalance = () => {
@@ -127,16 +138,34 @@ const AdminPanel = ({ onLogout }) => {
 
 
   const handleDeleteUser = () => {
+    
     if (!userId) return setError('User ID required');
     executeAdminAction({ action: "deleteUser", adminId, adminPassword, userId });
   };
+const handleResetPassword = () => {
+  if (!userId || !newPassword) {
+    setError('User ID and New Password required');
+    return;
+  }
+
+  executeAdminAction({
+    action: "resetPassword",
+    adminId,
+    adminPassword,
+    userId,
+    newPassword
+  });
+};
 
   const resetForm = () => {
-    setUserId('');
-    setPassword('');
-    setNewBalance('');
-    setAction('list');
-  };
+  setUserId('');
+  setName('');        // ✅ add
+  setPassword('');
+  setNewBalance('');
+  setNewPassword('');
+  setAction('list');
+};
+
 
   useEffect(() => {
     fetchUsers();
@@ -499,16 +528,59 @@ const AdminPanel = ({ onLogout }) => {
               <button onClick={() => setAction('create')} style={{ ...actionButtonStyle, background: action === 'create' ? '#10b981' : '#f3f4f6', color: action === 'create' ? '#fff' : '#374151' }}>Create User</button>
               <button onClick={() => setAction('updateBalance')} style={{ ...actionButtonStyle, background: action === 'updateBalance' ? '#f59e0b' : '#f3f4f6', color: action === 'updateBalance' ? '#fff' : '#374151' }}>Add Balance</button>
               <button onClick={() => setAction('deleteUser')} style={{ ...actionButtonStyle, background: action === 'deleteUser' ? '#ef4444' : '#f3f4f6', color: action === 'deleteUser' ? '#fff' : '#374151' }}>Delete User</button>
+              <button
+  onClick={() => setAction('resetPassword')}
+  style={{
+    ...actionButtonStyle,
+    background: action === 'resetPassword' ? '#6366f1' : '#f3f4f6',
+    color: action === 'resetPassword' ? '#fff' : '#374151'
+  }}
+>
+  Reset Password
+</button>
+
             </div>
 
             {/* Dynamic Forms */}
             {action === 'create' && (
-              <div style={formContainerStyle}>
-                <input type="text" value={userId} onChange={(e) => setUserId(e.target.value)} placeholder="User ID" style={inputStyle} />
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" style={inputStyle} />
-                <button onClick={handleCreateUser} disabled={loading || !userId || !password} style={{ ...buttonPrimaryStyle, background: '#10b981', opacity: loading || !userId || !password ? 0.6 : 1 }}>✅ Create User</button>
-              </div>
-            )}
+  <div style={formContainerStyle}>
+    {/* User ID (PLC uses this) */}
+    <input
+      type="text"
+      value={userId}
+      onChange={(e) => setUserId(e.target.value)}
+      placeholder="User ID (number only)"
+      style={inputStyle}
+    />
+
+    {/* User Name (Human readable) */}
+    <input
+      type="text"
+      value={name}
+      onChange={(e) => setName(e.target.value)}
+      placeholder="User Name (Ram, Sham...)"
+      style={inputStyle}
+    />
+
+    {/* Password */}
+    <input
+      type="password"
+      value={password}
+      onChange={(e) => setPassword(e.target.value)}
+      placeholder="Password"
+      style={inputStyle}
+    />
+
+    <button
+      onClick={handleCreateUser}
+      disabled={loading || !userId || !name || !password}
+      style={{ ...buttonPrimaryStyle, background: '#10b981' }}
+    >
+      ✅ Create User
+    </button>
+  </div>
+)}
+
 
             {action === 'updateBalance' && (
               <div style={formContainerStyle}>
@@ -524,6 +596,36 @@ const AdminPanel = ({ onLogout }) => {
                 <button onClick={handleDeleteUser} disabled={loading || !userId} style={{ ...buttonPrimaryStyle, background: '#ef4444', opacity: loading || !userId ? 0.6 : 1 }}>🗑️ Delete User</button>
               </div>
             )}
+            {action === 'resetPassword' && (
+  <div style={formContainerStyle}>
+    <input
+      type="text"
+      value={userId}
+      onChange={(e) => setUserId(e.target.value)}
+      placeholder="User ID"
+      style={inputStyle}
+    />
+    <input
+      type="password"
+      value={newPassword}
+      onChange={(e) => setNewPassword(e.target.value)}
+      placeholder="New Password"
+      style={inputStyle}
+    />
+    <button
+      onClick={handleResetPassword}
+      disabled={loading || !userId || !newPassword}
+      style={{
+        ...buttonPrimaryStyle,
+        background: '#6366f1',
+        opacity: loading || !userId || !newPassword ? 0.6 : 1
+      }}
+    >
+      Reset Password
+    </button>
+  </div>
+)}
+
           </div>
         </div>
       </main>
