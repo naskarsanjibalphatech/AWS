@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import LoginPage from './LoginPage';
 import UserDashboard from './pages/home/User';
 import AdminPanel from './pages/home/AdminPanel';
+import OperatorDashboard from './pages/home/OperatorDashboard';
+import RemoteUserDashboard from './pages/home/RemoteUserDashboard';
 import { Wrapper } from './layouts/Wrapper';
 import "src/styles/index.css";
 
@@ -97,18 +99,23 @@ function App() {
         {/* USER DASHBOARD ROUTE */}
         {/* ============================================ */}
         <Route
-          path="/user-dashboard"
-          element={
-            isLoggedIn && userRole !== 'admin' ? (
-              <UserDashboard />
-            ) : isLoggedIn && userRole === 'admin' ? (
-              <Navigate to="/admin" replace />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-
+  path="/user-dashboard"
+  element={
+    isLoggedIn && userRole !== 'admin' ? (
+      userRole === 'operator' ? (
+  <OperatorDashboard />
+) : userRole === 'remote' ? (
+  <RemoteUserDashboard />
+) : (
+  <UserDashboard />
+)
+    ) : isLoggedIn && userRole === 'admin' ? (
+      <Navigate to="/admin" replace />
+    ) : (
+      <Navigate to="/login" replace />
+    )
+  }
+/>
         {/* ============================================ */}
         {/* ADMIN PANEL ROUTE */}
         {/* ============================================ */}

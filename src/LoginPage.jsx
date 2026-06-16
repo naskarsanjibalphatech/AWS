@@ -1,45 +1,36 @@
 import React, { useState } from 'react';
+import { Gauge, Lock, User, AlertCircle, ArrowRight } from 'lucide-react';
 
-const API_BASE = 'https://o27vgpfcrh.execute-api.ap-south-1.amazonaws.com/USER_LOGIN_EV_S1';
+const API_BASE = 'https://6hmya3a8uj.execute-api.ap-south-1.amazonaws.com/DEFAULT';
+
+const palette = {
+  bg: '#0a0f1c',
+  bgGrid: 'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.035) 1px, transparent 0)',
+  surface: '#111a2e',
+  inset: '#0d1424',
+  border: '#22304a',
+  borderSoft: '#1a2640',
+  text: '#e7edf7',
+  textMuted: '#7e8db0',
+  textFaint: '#4d5c7e',
+  cyan: '#2dd4ee',
+  cyanDim: 'rgba(45,212,238,0.15)',
+  red: '#fb6f6f',
+  redDim: 'rgba(251,111,111,0.15)',
+};
 
 const LoginPage = ({ onLoginSuccess = () => {} }) => {
   const [userId, setUserId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-
-  const SECRET_USER_ID = 'Office';
-  const SECRET_PASSWORD = 'Office@100';
-  const ADMIN_ID = 'admin';
-  const ADMIN_PASSWORD = 'admin123';
+  const [focusedField, setFocusedField] = useState(null);
 
   const handleLogin = async () => {
     setError('');
     setLoading(true);
 
     try {
-      if (userId === ADMIN_ID && password === ADMIN_PASSWORD) {
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('userRole', 'admin');
-        localStorage.setItem('currentUserId', ADMIN_ID);
-        setLoading(false);
-        setTimeout(() => {
-          onLoginSuccess('admin', { userId: ADMIN_ID, role: 'admin' });
-        }, 100);
-        return;
-      }
-
-      if (userId === SECRET_USER_ID && password === SECRET_PASSWORD) {
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('userRole', 'user');
-        localStorage.setItem('currentUserId', SECRET_USER_ID);
-        setLoading(false);
-        setTimeout(() => {
-          onLoginSuccess('user', { userId: SECRET_USER_ID, role: 'user' });
-        }, 100);
-        return;
-      }
-
       const response = await fetch(`${API_BASE}`, {
         method: 'POST',
         headers: {
@@ -53,19 +44,22 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
         })
       });
 
-      const data = await response.json();
+      const responseData = await response.json();
 
-      if (response.ok && (data.success || data.userId || data.message === 'Login successful')) {
-        const role = data.role || (userId.toLowerCase() === 'admin' ? 'admin' : 'user');
+      const data =
+        typeof responseData.body === 'string'
+          ? JSON.parse(responseData.body)
+          : responseData;
+
+      if (response.ok && data.role) {
+        const role = data.role;
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('userRole', role);
         localStorage.setItem('currentUserId', userId);
-        localStorage.setItem('userBalance', data.balance || '0');
-        
+
         const userData = {
           userId: userId,
           role: role,
-          balance: data.balance
         };
 
         setLoading(false);
@@ -89,660 +83,215 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
     }
   };
 
+  const inputStyle = (fieldName) => ({
+    width: '100%',
+    padding: '14px 14px 14px 42px',
+    fontSize: '14px',
+    background: palette.inset,
+    border: `1px solid ${focusedField === fieldName ? palette.cyan + '80' : palette.border}`,
+    borderRadius: '10px',
+    color: palette.text,
+    boxSizing: 'border-box',
+    outline: 'none',
+    fontWeight: 500,
+    fontFamily: "'Inter', sans-serif",
+    boxShadow: focusedField === fieldName ? `0 0 0 3px ${palette.cyanDim}` : 'none',
+    transition: 'border-color 0.15s ease, box-shadow 0.15s ease',
+  });
+
   return (
     <div style={{
+      minHeight: '100vh',
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: '100vh',
-      background: '#f5f5f5',
       padding: '20px',
-      fontFamily: '"Segoe UI", Roboto, "Helvetica Neue", sans-serif'
+      background: `${palette.bgGrid}, linear-gradient(180deg, ${palette.bg} 0%, #0c1322 100%)`,
+      backgroundSize: '22px 22px, 100% 100%',
+      fontFamily: "'Inter', 'Segoe UI', sans-serif",
+      color: palette.text,
     }}>
-      {/* DESKTOP VERSION */}
-      <div className="desktop-view" style={{
-        display: 'flex',
+      <div style={{
         width: '100%',
-        maxWidth: '1300px',
-        borderRadius: '16px',
-        overflow: 'hidden',
-        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)',
-        backgroundColor: '#ffffff',
-        minHeight: '750px'
+        maxWidth: '400px',
+        background: palette.surface,
+        border: `1px solid ${palette.borderSoft}`,
+        borderRadius: '18px',
+        padding: '40px 32px',
+        boxShadow: '0 24px 70px rgba(0,0,0,0.5)',
       }}>
-        {/* DESKTOP LEFT - WHITE */}
-        <div style={{
-          flex: '1',
-          background: '#ffffff',
-          padding: '70px 55px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'flex-start',
-          alignItems: 'flex-start',
-          position: 'relative',
-          paddingTop: '40px'
-        }}>
-          <div style={{ textAlign: 'left', width: '100%', maxWidth: '380px' }}>
-            {/* LOGO AT TOP - CENTER ALIGNED */}
-            <div style={{ marginBottom: '45px', display: 'flex', justifyContent: 'center', width: '100%' }}>
-              <img src="/logo_160126.jpeg" alt="AlphaTech Solutions" style={{
-                maxWidth: '100%',
-                height: 'auto',
-                maxHeight: '85px',
-                objectFit: 'contain'
-              }} />
-            </div>
-
-            {/* TITLE */}
-            <h1 style={{
-              fontSize: '34px',
-              fontWeight: '700',
-              color: '#1a1a1a',
-              margin: '0 0 14px 0',
-              lineHeight: '1.2'
-            }}>
-              EV Charging Station
-            </h1>
-
-            {/* RED LINE */}
-            <div style={{
-              width: '60px',
-              height: '3px',
-              background: '#dc143c',
-              margin: '0 0 22px 0'
-            }} />
-
-            {/* SUBTITLE */}
-            <p style={{
-              fontSize: '16px',
-              color: '#666666',
-              lineHeight: '1.8',
-              margin: '0 0 50px 0',
-              fontWeight: '500'
-            }}>
-              Smart Charging Management System
-            </p>
-
-            {/* FEATURES ON DESKTOP LEFT */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '26px' }}>
-              {[
-                { icon: '⚡', title: 'Ultra-Fast Charging', desc: 'High-speed technology for quick charge' },
-                { icon: '🔒', title: 'Enterprise Security', desc: 'Bank-level encryption & protection' },
-                { icon: '📊', title: 'Real-time Analytics', desc: 'Live monitoring and reports' }
-              ].map((item, idx) => (
-                <div key={idx} style={{
-                  display: 'flex',
-                  gap: '16px',
-                  alignItems: 'flex-start'
-                }}>
-                  <div style={{
-                    fontSize: '32px',
-                    minWidth: '32px'
-                  }}>
-                    {item.icon}
-                  </div>
-                  <div>
-                    <div style={{
-                      fontSize: '14px',
-                      fontWeight: '700',
-                      color: '#1a1a1a',
-                      marginBottom: '5px'
-                    }}>
-                      {item.title}
-                    </div>
-                    <div style={{
-                      fontSize: '12px',
-                      color: '#888888',
-                      lineHeight: '1.5'
-                    }}>
-                      {item.desc}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+        {/* Logo */}
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginBottom: '28px' }}>
+          <div style={{
+            width: '52px',
+            height: '52px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #1f3a63 0%, #0f1c33 100%)',
+            border: `1px solid ${palette.cyan}33`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            marginBottom: '16px',
+          }}>
+            <Gauge style={{ width: '26px', height: '26px', color: palette.cyan }} />
           </div>
+          <h1 style={{
+            fontFamily: "'Space Grotesk', sans-serif",
+            fontSize: '20px',
+            fontWeight: 700,
+            color: palette.text,
+            margin: '0 0 6px 0',
+            textAlign: 'center',
+          }}>
+            BOUNSI Gate Control
+          </h1>
+          <p style={{
+            fontFamily: "'JetBrains Mono', monospace",
+            fontSize: '11px',
+            color: palette.cyan,
+            margin: 0,
+            letterSpacing: '0.18em',
+            textTransform: 'uppercase',
+          }}>
+            Cloud SCADA
+          </p>
         </div>
 
-        {/* DESKTOP RIGHT - RED LOGIN */}
-        <div style={{
-          flex: '1',
-          background: 'linear-gradient(135deg, #dc143c 0%, #c41233 100%)',
-          padding: '70px 55px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center'
-        }}>
-          <div style={{ width: '100%', maxWidth: '360px' }}>
-            {/* WELCOME TITLE */}
-            <h2 style={{
-              fontSize: '34px',
-              fontWeight: '700',
-              color: '#ffffff',
-              margin: '0 0 10px 0'
-            }}>
-              Welcome Back
-            </h2>
-            <p style={{
-              fontSize: '15px',
-              color: 'rgba(255, 255, 255, 0.9)',
-              margin: '0 0 40px 0',
-              fontWeight: '500'
-            }}>
-              Sign in to your account
-            </p>
+        {/* Error */}
+        {error && (
+          <div style={{
+            background: palette.redDim,
+            border: `1px solid ${palette.red}40`,
+            borderRadius: '10px',
+            padding: '12px 14px',
+            marginBottom: '20px',
+            display: 'flex',
+            gap: '10px',
+            alignItems: 'flex-start',
+          }}>
+            <AlertCircle style={{ width: '16px', height: '16px', color: palette.red, flexShrink: 0, marginTop: '1px' }} />
+            <span style={{ fontSize: '13px', color: palette.text, lineHeight: 1.5, opacity: 0.9 }}>
+              {error}
+            </span>
+          </div>
+        )}
 
-            {/* ERROR MESSAGE */}
-            {error && (
-              <div style={{
-                background: 'rgba(0, 0, 0, 0.2)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                borderRadius: '8px',
-                padding: '14px 16px',
-                marginBottom: '28px',
-                display: 'flex',
-                gap: '12px'
-              }}>
-                <span style={{ fontSize: '16px' }}>⚠️</span>
-                <span style={{
-                  fontSize: '13px',
-                  color: '#ffffff',
-                  lineHeight: '1.5'
-                }}>
-                  {error}
-                </span>
-              </div>
-            )}
-
-            {/* FORM */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {/* USER ID */}
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  color: '#ffffff',
-                  marginBottom: '10px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  User ID
-                </label>
-                <input
-                  type="text"
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  disabled={loading}
-                  placeholder="Enter your user ID"
-                  style={{
-                    width: '100%',
-                    padding: '13px 15px',
-                    fontSize: '14px',
-                    background: '#ffffff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    color: '#1a1a1a',
-                    boxSizing: 'border-box',
-                    transition: 'all 0.3s',
-                    outline: 'none',
-                    fontWeight: '500'
-                  }}
-                  onFocus={(e) => {
-                    if (!loading) {
-                      e.target.style.boxShadow = '0 0 0 3px rgba(255, 255, 255, 0.2)';
-                    }
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
-              </div>
-
-              {/* PASSWORD */}
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  color: '#ffffff',
-                  marginBottom: '10px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px'
-                }}>
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  disabled={loading}
-                  placeholder="Enter your password"
-                  style={{
-                    width: '100%',
-                    padding: '13px 15px',
-                    fontSize: '14px',
-                    background: '#ffffff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    color: '#1a1a1a',
-                    boxSizing: 'border-box',
-                    transition: 'all 0.3s',
-                    outline: 'none',
-                    fontWeight: '500'
-                  }}
-                  onFocus={(e) => {
-                    if (!loading) {
-                      e.target.style.boxShadow = '0 0 0 3px rgba(255, 255, 255, 0.2)';
-                    }
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
-              </div>
-
-              {/* SIGN IN BUTTON */}
-              <button
-                onClick={handleLogin}
-                disabled={loading}
-                style={{
-                  width: '100%',
-                  padding: '13px 16px',
-                  fontSize: '13px',
-                  fontWeight: '700',
-                  color: '#dc143c',
-                  background: '#ffffff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.3s',
-                  letterSpacing: '0.5px',
-                  marginTop: '10px',
-                  textTransform: 'uppercase',
-                  opacity: loading ? 0.8 : 1,
-                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)'
-                }}
-                onMouseOver={(e) => {
-                  if (!loading) {
-                    e.target.style.transform = 'translateY(-2px)';
-                    e.target.style.boxShadow = '0 6px 18px rgba(0, 0, 0, 0.3)';
-                  }
-                }}
-                onMouseOut={(e) => {
-                  e.target.style.transform = 'translateY(0)';
-                  e.target.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.2)';
-                }}
-              >
-                {loading ? 'SIGNING IN...' : 'SIGN IN'}
-              </button>
-            </div>
-
-            {/* FEATURES BELOW BUTTON */}
-            <div style={{ marginTop: '38px', paddingTop: '30px', borderTop: '1px solid rgba(255, 255, 255, 0.2)' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                {[
-                  { icon: '⚡', title: 'Fast Charging', desc: 'High-speed technology' },
-                  { icon: '🔒', title: 'Secure', desc: 'Enterprise security' },
-                  { icon: '📊', title: 'Real-time', desc: 'Live monitoring' }
-                ].map((item, idx) => (
-                  <div key={idx} style={{
-                    display: 'flex',
-                    gap: '12px',
-                    alignItems: 'flex-start'
-                  }}>
-                    <div style={{
-                      fontSize: '20px',
-                      minWidth: '20px'
-                    }}>
-                      {item.icon}
-                    </div>
-                    <div>
-                      <div style={{
-                        fontSize: '12px',
-                        fontWeight: '700',
-                        color: '#ffffff',
-                        marginBottom: '3px'
-                      }}>
-                        {item.title}
-                      </div>
-                      <div style={{
-                        fontSize: '11px',
-                        color: 'rgba(255, 255, 255, 0.75)'
-                      }}>
-                        {item.desc}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* FOOTER */}
-            <p style={{
+        {/* Form */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* User ID */}
+          <div>
+            <label style={{
+              display: 'block',
               fontSize: '11px',
-              color: 'rgba(255, 255, 255, 0.7)',
-              textAlign: 'center',
-              marginTop: '32px',
-              margin: '32px 0 0 0'
+              fontWeight: 700,
+              color: palette.textMuted,
+              marginBottom: '8px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.14em',
             }}>
-              🔐 Secured by enterprise-grade encryption
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* MOBILE VERSION */}
-      <div className="mobile-view" style={{
-        display: 'none',
-        flexDirection: 'column',
-        width: '100%',
-        maxWidth: '100%',
-        borderRadius: '0',
-        overflow: 'hidden',
-        minHeight: '100vh',
-        backgroundColor: '#ffffff'
-      }}>
-        {/* MOBILE TOP - WHITE */}
-        <div style={{
-          background: '#ffffff',
-          padding: '30px 24px 45px 24px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'flex-start',
-          alignItems: 'center'
-        }}>
-          <div style={{ textAlign: 'center', width: '100%' }}>
-            {/* LOGO - CENTER ALIGNED */}
-            <div style={{ marginBottom: '28px', display: 'flex', justifyContent: 'center', width: '100%' }}>
-              <img src="/logo_160126.jpeg" alt="AlphaTech Solutions" style={{
-                maxWidth: '100%',
-                height: 'auto',
-                maxHeight: '60px',
-                objectFit: 'contain'
+              User ID
+            </label>
+            <div style={{ position: 'relative' }}>
+              <User style={{
+                position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)',
+                color: palette.textFaint, width: '16px', height: '16px', pointerEvents: 'none',
               }} />
-            </div>
-
-            {/* TITLE */}
-            <h1 style={{
-              fontSize: '24px',
-              fontWeight: '700',
-              color: '#1a1a1a',
-              margin: '0 0 12px 0'
-            }}>
-              EV Charging Station
-            </h1>
-
-            {/* RED LINE */}
-            <div style={{
-              width: '35px',
-              height: '2px',
-              background: '#dc143c',
-              margin: '0 auto 16px auto'
-            }} />
-
-            {/* SUBTITLE */}
-            <p style={{
-              fontSize: '13px',
-              color: '#666666',
-              lineHeight: '1.6',
-              margin: '0',
-              fontWeight: '500'
-            }}>
-              Smart Charging Management System
-            </p>
-          </div>
-        </div>
-
-        {/* MOBILE BOTTOM - RED LOGIN */}
-        <div style={{
-          background: 'linear-gradient(135deg, #dc143c 0%, #c41233 100%)',
-          padding: '45px 24px',
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: 'center',
-          alignItems: 'center',
-          flex: 1
-        }}>
-          <div style={{ width: '100%' }}>
-            {/* WELCOME TITLE */}
-            <h2 style={{
-              fontSize: '24px',
-              fontWeight: '700',
-              color: '#ffffff',
-              margin: '0 0 6px 0'
-            }}>
-              Welcome Back
-            </h2>
-            <p style={{
-              fontSize: '13px',
-              color: 'rgba(255, 255, 255, 0.9)',
-              margin: '0 0 28px 0',
-              fontWeight: '500'
-            }}>
-              Sign in to your account
-            </p>
-
-            {/* ERROR MESSAGE */}
-            {error && (
-              <div style={{
-                background: 'rgba(0, 0, 0, 0.2)',
-                border: '1px solid rgba(255, 255, 255, 0.3)',
-                borderRadius: '6px',
-                padding: '12px 14px',
-                marginBottom: '20px',
-                display: 'flex',
-                gap: '10px'
-              }}>
-                <span style={{ fontSize: '14px' }}>⚠️</span>
-                <span style={{
-                  fontSize: '12px',
-                  color: '#ffffff',
-                  lineHeight: '1.4'
-                }}>
-                  {error}
-                </span>
-              </div>
-            )}
-
-            {/* FORM */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* USER ID */}
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  color: '#ffffff',
-                  marginBottom: '8px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.4px'
-                }}>
-                  User ID
-                </label>
-                <input
-                  type="text"
-                  value={userId}
-                  onChange={(e) => setUserId(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  disabled={loading}
-                  placeholder="Enter your user ID"
-                  style={{
-                    width: '100%',
-                    padding: '11px 13px',
-                    fontSize: '14px',
-                    background: '#ffffff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    color: '#1a1a1a',
-                    boxSizing: 'border-box',
-                    transition: 'all 0.3s',
-                    outline: 'none',
-                    fontWeight: '500'
-                  }}
-                  onFocus={(e) => {
-                    if (!loading) {
-                      e.target.style.boxShadow = '0 0 0 2px rgba(255, 255, 255, 0.2)';
-                    }
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
-              </div>
-
-              {/* PASSWORD */}
-              <div>
-                <label style={{
-                  display: 'block',
-                  fontSize: '11px',
-                  fontWeight: '700',
-                  color: '#ffffff',
-                  marginBottom: '8px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.4px'
-                }}>
-                  Password
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  disabled={loading}
-                  placeholder="Enter your password"
-                  style={{
-                    width: '100%',
-                    padding: '11px 13px',
-                    fontSize: '14px',
-                    background: '#ffffff',
-                    border: 'none',
-                    borderRadius: '6px',
-                    color: '#1a1a1a',
-                    boxSizing: 'border-box',
-                    transition: 'all 0.3s',
-                    outline: 'none',
-                    fontWeight: '500'
-                  }}
-                  onFocus={(e) => {
-                    if (!loading) {
-                      e.target.style.boxShadow = '0 0 0 2px rgba(255, 255, 255, 0.2)';
-                    }
-                  }}
-                  onBlur={(e) => {
-                    e.target.style.boxShadow = 'none';
-                  }}
-                />
-              </div>
-
-              {/* SIGN IN BUTTON */}
-              <button
-                onClick={handleLogin}
+              <input
+                type="text"
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                onKeyPress={handleKeyPress}
+                onFocus={() => setFocusedField('userId')}
+                onBlur={() => setFocusedField(null)}
                 disabled={loading}
-                style={{
-                  width: '100%',
-                  padding: '11px 13px',
-                  fontSize: '12px',
-                  fontWeight: '700',
-                  color: '#dc143c',
-                  background: '#ffffff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.3s',
-                  letterSpacing: '0.4px',
-                  marginTop: '6px',
-                  textTransform: 'uppercase',
-                  opacity: loading ? 0.8 : 1,
-                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)'
-                }}
-                onMouseOver={(e) => {
-                  if (!loading) {
-                    e.target.style.transform = 'translateY(-1px)';
-                  }
-                }}
-                onMouseOut={(e) => {
-                  e.target.style.transform = 'translateY(0)';
-                }}
-              >
-                {loading ? 'SIGNING IN...' : 'SIGN IN'}
-              </button>
+                placeholder="Enter your user ID"
+                style={inputStyle('userId')}
+              />
             </div>
-
-            {/* FEATURES BELOW BUTTON */}
-            <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid rgba(255, 255, 255, 0.2)' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {[
-                  { icon: '⚡', title: 'Fast Charging' },
-                  { icon: '🔒', title: 'Secure' },
-                  { icon: '📊', title: 'Real-time' }
-                ].map((item, idx) => (
-                  <div key={idx} style={{
-                    display: 'flex',
-                    gap: '10px',
-                    alignItems: 'center'
-                  }}>
-                    <div style={{
-                      fontSize: '16px',
-                      minWidth: '16px'
-                    }}>
-                      {item.icon}
-                    </div>
-                    <div style={{
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      color: '#ffffff'
-                    }}>
-                      {item.title}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* FOOTER */}
-            <p style={{
-              fontSize: '10px',
-              color: 'rgba(255, 255, 255, 0.7)',
-              textAlign: 'center',
-              marginTop: '22px',
-              margin: '22px 0 0 0'
-            }}>
-              🔐 Secured by enterprise-grade encryption
-            </p>
           </div>
+
+          {/* Password */}
+          <div>
+            <label style={{
+              display: 'block',
+              fontSize: '11px',
+              fontWeight: 700,
+              color: palette.textMuted,
+              marginBottom: '8px',
+              textTransform: 'uppercase',
+              letterSpacing: '0.14em',
+            }}>
+              Password
+            </label>
+            <div style={{ position: 'relative' }}>
+              <Lock style={{
+                position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)',
+                color: palette.textFaint, width: '16px', height: '16px', pointerEvents: 'none',
+              }} />
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyPress={handleKeyPress}
+                onFocus={() => setFocusedField('password')}
+                onBlur={() => setFocusedField(null)}
+                disabled={loading}
+                placeholder="Enter your password"
+                style={inputStyle('password')}
+              />
+            </div>
+          </div>
+
+          {/* Submit */}
+          <button
+            onClick={handleLogin}
+            disabled={loading}
+            style={{
+              width: '100%',
+              padding: '14px 16px',
+              fontSize: '13px',
+              fontWeight: 700,
+              color: '#06121f',
+              background: palette.cyan,
+              border: 'none',
+              borderRadius: '10px',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase',
+              marginTop: '6px',
+              opacity: loading ? 0.7 : 1,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              boxShadow: `0 8px 24px ${palette.cyanDim}`,
+              transition: 'opacity 0.15s ease',
+              fontFamily: "'Inter', sans-serif",
+            }}
+          >
+            {loading ? 'Signing in…' : 'Sign in'}
+            {!loading && <ArrowRight style={{ width: '15px', height: '15px' }} />}
+          </button>
         </div>
+
+        {/* Footer */}
+        <p style={{
+          fontSize: '11px',
+          color: palette.textFaint,
+          textAlign: 'center',
+          marginTop: '26px',
+          marginBottom: 0,
+          fontFamily: "'JetBrains Mono', monospace",
+          letterSpacing: '0.08em',
+        }}>
+          SECURED · ENCRYPTED CONNECTION
+        </p>
       </div>
 
       <style>{`
-        input::placeholder {
-          color: rgba(0, 0, 0, 0.3);
-        }
-
-        * {
-          -webkit-tap-highlight-color: transparent;
-        }
-
-        @media (min-width: 769px) {
-          .desktop-view {
-            display: flex !important;
-          }
-          .mobile-view {
-            display: none !important;
-          }
-        }
-
-        @media (max-width: 768px) {
-          .desktop-view {
-            display: none !important;
-          }
-          .mobile-view {
-            display: flex !important;
-          }
-        }
+        @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        input::placeholder { color: ${palette.textFaint}; }
+        * { -webkit-tap-highlight-color: transparent; }
       `}</style>
     </div>
   );
