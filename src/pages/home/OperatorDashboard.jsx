@@ -11,7 +11,14 @@ import {
   Waves,
 } from "lucide-react";
 
-const MAX_POS = 10;
+/* ──────────────────────────────────────────────────────────────
+   CONSTANTS
+   All static config lives here so it's defined once and reused —
+   previously the gate API/thing_name map was copy-pasted into
+   handleRaise, handleLower, and handleStop separately.
+   ────────────────────────────────────────────────────────────── */
+
+const MAX_POS = 15.3;
 const GATE_COUNT = 6;
 
 const initialGates = Array.from({ length: GATE_COUNT }, (_, i) => ({
@@ -20,6 +27,8 @@ const initialGates = Array.from({ length: GATE_COUNT }, (_, i) => ({
   status: "STOP",
   manualMode: false,
   olrTrip: false,
+  fullClose: false,
+  fullOpen: false,
 }));
 
 const GROUPS = [
@@ -28,7 +37,61 @@ const GROUPS = [
   { id: "G3", label: "Group 3", sub: "Canal regulator gates 05–06", ids: [5, 6] },
 ];
 
-/* ── Larger SCADA-style vertical lift gate mimic ── */
+// Telemetry read endpoints, polled every 3s for live gate status
+const READ_APIS = {
+  1: "https://7euqgjdoy4.execute-api.ap-south-1.amazonaws.com/default",
+  2: "https://3cc84dflq6.execute-api.ap-south-1.amazonaws.com/DEFAULT",
+  3: "https://s7p67i8d81.execute-api.ap-south-1.amazonaws.com/default",
+  4: "https://91y6dg15lg.execute-api.ap-south-1.amazonaws.com/default",
+  5: "https://51f63jt7ka.execute-api.ap-south-1.amazonaws.com/default",
+  6: "https://p23r67v6p4.execute-api.ap-south-1.amazonaws.com/default",
+};
+
+// Write endpoints + PLC thing names, used by raise/lower/stop commands
+// (this was previously duplicated three times, once per handler)
+const GATE_CONFIG = {
+  1: { thing_name: "plc1_bounsi",   api: "https://n458o442qk.execute-api.ap-south-1.amazonaws.com/default" },
+  2: { thing_name: "test5",         api: "https://crmr2lcju2.execute-api.ap-south-1.amazonaws.com/DEFAULT" },
+  3: { thing_name: "plc3_bounsi_1", api: "https://qj0tv4wxta.execute-api.ap-south-1.amazonaws.com/default" },
+  4: { thing_name: "plc4_bounsi_1", api: "https://hc0ca0vy9c.execute-api.ap-south-1.amazonaws.com/default" },
+  5: { thing_name: "plc5_bounsi_1", api: "https://60ovy44j9a.execute-api.ap-south-1.amazonaws.com/default" },
+  6: { thing_name: "plc6_bounsi_1", api: "https://27x4wo32a6.execute-api.ap-south-1.amazonaws.com/default" },
+};
+
+// Modbus addresses for each momentary command (write 1, then 0 after 2s)
+const COMMAND_ADDRESS = {
+  RAISE: 8257,
+  STOP: 8258,
+  LOWER: 8260,
+};
+
+/* ──────────────────────────────────────────────────────────────
+   HELPERS
+   ────────────────────────────────────────────────────────────── */
+
+// Sends a momentary pulse command (1 then 0) to a gate's PLC.
+// Shared by handleRaise / handleLower / handleStop below.
+async function sendGateCommand(gateId, address) {
+  const gate = GATE_CONFIG[gateId];
+  if (!gate) throw new Error(`No GATE_CONFIG entry for gate ${gateId}`);
+
+  await fetch(gate.api, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ thing_name: gate.thing_name, address, value: 1 }),
+  });
+  await new Promise((resolve) => setTimeout(resolve, 2000));
+  await fetch(gate.api, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ thing_name: gate.thing_name, address, value: 0 }),
+  });
+}
+
+/* ──────────────────────────────────────────────────────────────
+   GATE VISUALIZATION — SCADA-style vertical lift gate mimic
+   ────────────────────────────────────────────────────────────── */
+
 function GateVisualization({ gate }) {
   const W = 360, H = 220;
   const MAX_H = 130;
@@ -196,43 +259,48 @@ function GateVisualization({ gate }) {
   );
 }
 
+/* ──────────────────────────────────────────────────────────────
+   MAIN DASHBOARD COMPONENT
+   ────────────────────────────────────────────────────────────── */
+
 export default function OperatorDashboard() {
   const [gates, setGates] = useState(initialGates);
-  const readApis = {
-    1: "https://7euqgjdoy4.execute-api.ap-south-1.amazonaws.com/default",
-    2: "https://3cc84dflq6.execute-api.ap-south-1.amazonaws.com/DEFAULT",
-    3: "https://s7p67i8d81.execute-api.ap-south-1.amazonaws.com/default",
-    4: "https://91y6dg15lg.execute-api.ap-south-1.amazonaws.com/default",
-    5: "https://51f63jt7ka.execute-api.ap-south-1.amazonaws.com/default",
-    6: "https://p23r67v6p4.execute-api.ap-south-1.amazonaws.com/default"
-  };
   const [now, setNow] = useState(new Date());
 
+  // Clock tick — updates the header time/date display every second
   useEffect(() => {
     const tick = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(tick);
   }, []);
 
+  // Telemetry polling — pulls live gate status every 3s
   useEffect(() => {
     const loadGateData = async () => {
       try {
         const gatePromises = [1, 2, 3, 4, 5, 6].map(async (gateId) => {
-          const response = await fetch(readApis[gateId]);
+          const response = await fetch(READ_APIS[gateId]);
           const json = await response.json();
           return { gateId, data: json.data };
         });
         const results = await Promise.all(gatePromises);
-        setGates(prev =>
-          prev.map(gate => {
-            const gateData = results.find(r => r.gateId === gate.id)?.data || {};
+        setGates((prev) =>
+          prev.map((gate) => {
+            const gateData = results.find((r) => r.gateId === gate.id)?.data || {};
             return {
               ...gate,
               position: Number(gateData["40513"]?.value || 0),
               status:
-                gateData["8193"]?.value === 1 ? "RAISING" :
-                gateData["8194"]?.value === 1 ? "LOWERING" : "STOP",
+                gateData["8193"]?.value === 1
+                  ? "RAISING"
+                  : gateData["8194"]?.value === 1
+                  ? "LOWERING"
+                  : "STOP",
+              manualMode: gateData["10002"]?.value === 1,
+              // 10003 is a healthy signal, not a trip signal:
+              // 1 = healthy, 0 = trip — so olrTrip is true only when the value is 0
               olrTrip: gateData["10003"]?.value === 0,
-              manualMode: gateData["10001"]?.value === 1,
+              fullClose: gateData["10007"]?.value === 1,
+              fullOpen: gateData["10008"]?.value === 1,
             };
           })
         );
@@ -245,70 +313,47 @@ export default function OperatorDashboard() {
     return () => clearInterval(timer);
   }, []);
 
+  // Command handlers — all three delegate to the shared sendGateCommand helper
   const handleRaise = async (id) => {
     try {
-      const gateConfig = {
-        1: { thing_name: "plc1_bounsi", api: "https://n458o442qk.execute-api.ap-south-1.amazonaws.com/default" },
-        2: { thing_name: "test5", api: "https://crmr2lcju2.execute-api.ap-south-1.amazonaws.com/DEFAULT" },
-        3: { thing_name: "plc3_bounsi_1", api: "https://qj0tv4wxta.execute-api.ap-south-1.amazonaws.com/default" },
-        4: { thing_name: "plc4_bounsi_1", api: "https://hc0ca0vy9c.execute-api.ap-south-1.amazonaws.com/default" },
-        5: { thing_name: "plc5_bounsi_1", api: "https://60ovy44j9a.execute-api.ap-south-1.amazonaws.com/default" },
-        6: { thing_name: "plc6_bounsi_1", api: "https://27x4wo32a6.execute-api.ap-south-1.amazonaws.com/default" },
-      };
-      const gate = gateConfig[id];
-      await fetch(gate.api, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ thing_name: gate.thing_name, address: 8257, value: 1 }) });
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await fetch(gate.api, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ thing_name: gate.thing_name, address: 8257, value: 0 }) });
-      alert("Raise Command Sent");
-    } catch (error) { console.error(error); alert("Error"); }
+      await sendGateCommand(id, COMMAND_ADDRESS.RAISE);
+      alert(`Gate ${id} Raise Command Sent`);
+    } catch (error) {
+      console.error(error);
+      alert("Raise Error");
+    }
   };
 
   const handleLower = async (id) => {
     try {
-      const gateConfig = {
-        1: { thing_name: "plc1_bounsi", api: "https://n458o442qk.execute-api.ap-south-1.amazonaws.com/default" },
-        2: { thing_name: "test5", api: "https://crmr2lcju2.execute-api.ap-south-1.amazonaws.com/DEFAULT" },
-        3: { thing_name: "plc3_bounsi_1", api: "https://qj0tv4wxta.execute-api.ap-south-1.amazonaws.com/default" },
-        4: { thing_name: "plc4_bounsi_1", api: "https://hc0ca0vy9c.execute-api.ap-south-1.amazonaws.com/default" },
-        5: { thing_name: "plc5_bounsi_1", api: "https://60ovy44j9a.execute-api.ap-south-1.amazonaws.com/default" },
-        6: { thing_name: "plc6_bounsi_1", api: "https://27x4wo32a6.execute-api.ap-south-1.amazonaws.com/default" },
-      };
-      const gate = gateConfig[id];
-      await fetch(gate.api, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ thing_name: gate.thing_name, address: 8260, value: 1 }) });
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await fetch(gate.api, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ thing_name: gate.thing_name, address: 8260, value: 0 }) });
+      await sendGateCommand(id, COMMAND_ADDRESS.LOWER);
       alert(`Gate ${id} Lower Command Sent`);
-    } catch (error) { console.error(error); alert("Lower Error"); }
+    } catch (error) {
+      console.error(error);
+      alert("Lower Error");
+    }
   };
 
   const handleStop = async (id) => {
     try {
-      const gateConfig = {
-        1: { thing_name: "plc1_bounsi", api: "https://n458o442qk.execute-api.ap-south-1.amazonaws.com/default" },
-        2: { thing_name: "test5", api: "https://crmr2lcju2.execute-api.ap-south-1.amazonaws.com/DEFAULT" },
-        3: { thing_name: "plc3_bounsi_1", api: "https://qj0tv4wxta.execute-api.ap-south-1.amazonaws.com/default" },
-        4: { thing_name: "plc4_bounsi_1", api: "https://hc0ca0vy9c.execute-api.ap-south-1.amazonaws.com/default" },
-        5: { thing_name: "plc5_bounsi_1", api: "https://60ovy44j9a.execute-api.ap-south-1.amazonaws.com/default" },
-        6: { thing_name: "plc6_bounsi_1", api: "https://27x4wo32a6.execute-api.ap-south-1.amazonaws.com/default" },
-      };
-      const gate = gateConfig[id];
-      await fetch(gate.api, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ thing_name: gate.thing_name, address: 8258, value: 1 }) });
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await fetch(gate.api, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ thing_name: gate.thing_name, address: 8258, value: 0 }) });
+      await sendGateCommand(id, COMMAND_ADDRESS.STOP);
       alert(`Gate ${id} Stop Command Sent`);
-    } catch (error) { console.error(error); alert("Stop Error"); }
+    } catch (error) {
+      console.error(error);
+      alert("Stop Error");
+    }
   };
 
   const toggleFlag = (id, flag) => {
     setGates((prev) => prev.map((g) => (g.id === id ? { ...g, [flag]: !g[flag] } : g)));
   };
 
+  // Derived values used across the render
   const activeCount = gates.filter((g) => g.status !== "STOP").length;
   const tripCount = gates.filter((g) => g.olrTrip).length;
   const stoppedCount = gates.filter((g) => g.status === "STOP").length;
   const timeStr = now.toLocaleTimeString("en-GB", { hour12: false });
   const dateStr = now.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-
   const gateById = (id) => gates.find((g) => g.id === id);
 
   return (
@@ -453,7 +498,7 @@ export default function OperatorDashboard() {
         .db-card-id { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
         .db-card-id .num { font-family: var(--mono); font-size: 11px; color: var(--dim); }
 
-        /* STATUS BAR — new prominent status row below header */
+        /* STATUS BAR — prominent status row below header */
         .db-status-bar {
           display: flex; align-items: center; justify-content: space-between;
           padding: 10px 16px;
@@ -485,7 +530,7 @@ export default function OperatorDashboard() {
         .db-chip.RAISING  { background:var(--green-bg); color:var(--green); border-color:var(--green-bd); animation:cp 1.6s ease-in-out infinite; }
         .db-chip.LOWERING { background:var(--amber-bg); color:var(--amber); border-color:var(--amber-bd); animation:cp 1.6s ease-in-out infinite; }
 
-        /* VISUALIZATION — key change: much taller */
+        /* VISUALIZATION */
         .db-viz {
           position: relative;
           height: 220px;
@@ -664,10 +709,11 @@ export default function OperatorDashboard() {
 
             <div className="db-gate-grid">
               {groupGates.map((gate) => {
-                const running  = gate.status !== "STOP";
-                const raising  = gate.status === "RAISING";
+                const running = gate.status !== "STOP";
+                const raising = gate.status === "RAISING";
                 const lowering = gate.status === "LOWERING";
-                const fullClose = gate.position === 0;
+                const fullClose = gate.fullClose;
+                const fullOpen = gate.fullOpen;
                 let cardClass = "db-card";
                 if (gate.olrTrip) cardClass += " tripped";
                 else if (running) cardClass += " active";
@@ -702,7 +748,7 @@ export default function OperatorDashboard() {
                       </div>
                     </div>
 
-                    {/* Gate visualization — larger */}
+                    {/* Gate visualization */}
                     <div className="db-viz">
                       <GateVisualization gate={gate} />
                     </div>
@@ -715,7 +761,9 @@ export default function OperatorDashboard() {
                       </div>
                     </div>
 
-                    {/* Flags */}
+                    {/* Flags — "Full open" now lives inside this block with the rest,
+                        instead of being rendered outside .db-flags between the flags
+                        and the controls row */}
                     <div className="db-flags">
                       <div className="db-flag clickable" onClick={() => toggleFlag(gate.id, "manualMode")}>
                         <span>Manual mode</span>
@@ -750,6 +798,13 @@ export default function OperatorDashboard() {
                         <span className={`db-fval ${fullClose ? "on" : ""}`}>
                           {fullClose ? "ON" : "OFF"}
                           <span className={`db-dot ${fullClose ? "on" : ""}`} />
+                        </span>
+                      </div>
+                      <div className="db-flag">
+                        <span>Full open</span>
+                        <span className={`db-fval ${fullOpen ? "on" : ""}`}>
+                          {fullOpen ? "ON" : "OFF"}
+                          <span className={`db-dot ${fullOpen ? "on" : ""}`} />
                         </span>
                       </div>
                     </div>

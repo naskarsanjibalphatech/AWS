@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { Activity, LogOut, CheckCircle2, Building2, AlertTriangle, Waves } from "lucide-react";
 
-const MAX_POS = 10;
+/* ──────────────────────────────────────────────────────────────
+   CONSTANTS
+   ────────────────────────────────────────────────────────────── */
+
+const MAX_POS = 15.3;
 const GATE_COUNT = 6;
 
 const initialGates = Array.from({ length: GATE_COUNT }, (_, i) => ({
@@ -10,6 +14,8 @@ const initialGates = Array.from({ length: GATE_COUNT }, (_, i) => ({
   status: ["RAISING", "STOP", "LOWERING", "STOP", "STOP", "RAISING"][i],
   manualMode: i === 1,
   olrTrip: i === 3,
+  fullClose: i === 3,
+  fullOpen: false,
 }));
 
 const GROUPS = [
@@ -17,6 +23,21 @@ const GROUPS = [
   { id: "G2", label: "Group 2", sub: "Spillway gates 03–04", ids: [3, 4] },
   { id: "G3", label: "Group 3", sub: "Canal regulator gates 05–06", ids: [5, 6] },
 ];
+
+// Telemetry read endpoints, polled every 3s for live gate status.
+// Moved out of the component body so it's not re-created on every render.
+const READ_APIS = {
+  1: "https://7euqgjdoy4.execute-api.ap-south-1.amazonaws.com/default",
+  2: "https://3cc84dflq6.execute-api.ap-south-1.amazonaws.com/DEFAULT",
+  3: "https://s7p67i8d81.execute-api.ap-south-1.amazonaws.com/default",
+  4: "https://91y6dg15lg.execute-api.ap-south-1.amazonaws.com/default",
+  5: "https://51f63jt7ka.execute-api.ap-south-1.amazonaws.com/default",
+  6: "https://p23r67v6p4.execute-api.ap-south-1.amazonaws.com/default",
+};
+
+/* ──────────────────────────────────────────────────────────────
+   GATE VISUALIZATION — SCADA-style vertical lift gate mimic
+   ────────────────────────────────────────────────────────────── */
 
 function GateVisualization({ gate }) {
   const W = 360, H = 220;
@@ -167,11 +188,14 @@ function GateVisualization({ gate }) {
   );
 }
 
+/* ──────────────────────────────────────────────────────────────
+   GATE CARD — view-only (no control buttons)
+   ────────────────────────────────────────────────────────────── */
+
 function GateCard({ gate }) {
   const running  = gate.status !== "STOP";
   const raising  = gate.status === "RAISING";
   const lowering = gate.status === "LOWERING";
-  const fullClose = gate.position === 0;
   let cardClass = "db-card";
   if (gate.olrTrip) cardClass += " tripped";
   else if (running) cardClass += " active";
@@ -223,36 +247,43 @@ function GateCard({ gate }) {
         <div className="db-flag">
           <span>Manual mode</span>
           <span className={`db-fval ${gate.manualMode ? "on" : ""}`}>
-            {gate.manualMode ? "ENGAGED" : "REMOTE"}
+            {gate.manualMode ? "ON" : "OFF"}
             <span className={`db-dot ${gate.manualMode ? "on" : ""}`} />
           </span>
         </div>
         <div className="db-flag">
-          <span>Overload relay</span>
+          <span>OLR trip</span>
           <span className={`db-fval ${gate.olrTrip ? "warn" : "on"}`}>
-            {gate.olrTrip ? "TRIPPED" : "CLEAR"}
+            {gate.olrTrip ? "TRIPPED" : "OFF"}
             <span className={`db-dot ${gate.olrTrip ? "warn pulse" : "on"}`} />
           </span>
         </div>
         <div className="db-flag">
-          <span>Raise command</span>
+          <span>Gate raising</span>
           <span className={`db-fval ${raising ? "on" : ""}`}>
-            {raising ? "ACTIVE" : "IDLE"}
+            {raising ? "RAISING" : "STOPPED"}
             <span className={`db-dot ${raising ? "on pulse" : ""}`} />
           </span>
         </div>
         <div className="db-flag">
-          <span>Lower command</span>
+          <span>Gate closing</span>
           <span className={`db-fval ${lowering ? "on" : ""}`}>
-            {lowering ? "ACTIVE" : "IDLE"}
+            {lowering ? "CLOSING" : "STOPPED"}
             <span className={`db-dot ${lowering ? "on pulse" : ""}`} />
           </span>
         </div>
         <div className="db-flag">
-          <span>Sill seated</span>
-          <span className={`db-fval ${fullClose ? "on" : ""}`}>
-            {fullClose ? "YES" : "NO"}
-            <span className={`db-dot ${fullClose ? "on" : ""}`} />
+          <span>Full close</span>
+          <span className={`db-fval ${gate.fullClose ? "on" : ""}`}>
+            {gate.fullClose ? "ON" : "OFF"}
+            <span className={`db-dot ${gate.fullClose ? "on" : ""}`} />
+          </span>
+        </div>
+        <div className="db-flag">
+          <span>Full open</span>
+          <span className={`db-fval ${gate.fullOpen ? "on" : ""}`}>
+            {gate.fullOpen ? "ON" : "OFF"}
+            <span className={`db-dot ${gate.fullOpen ? "on" : ""}`} />
           </span>
         </div>
       </div>
@@ -260,43 +291,45 @@ function GateCard({ gate }) {
   );
 }
 
+/* ──────────────────────────────────────────────────────────────
+   MAIN DASHBOARD COMPONENT
+   ────────────────────────────────────────────────────────────── */
+
 export default function RemoteUserDashboard() {
   const [gates, setGates] = useState(initialGates);
-  const readApis = {
-    1: "https://7euqgjdoy4.execute-api.ap-south-1.amazonaws.com/default",
-    2: "https://3cc84dflq6.execute-api.ap-south-1.amazonaws.com/DEFAULT",
-    3: "https://s7p67i8d81.execute-api.ap-south-1.amazonaws.com/default",
-    4: "https://91y6dg15lg.execute-api.ap-south-1.amazonaws.com/default",
-    5: "https://51f63jt7ka.execute-api.ap-south-1.amazonaws.com/default",
-    6: "https://p23r67v6p4.execute-api.ap-south-1.amazonaws.com/default"
-  };
   const [now, setNow] = useState(new Date());
 
+  // Clock tick — updates the header time/date display every second
   useEffect(() => {
     const tick = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(tick);
   }, []);
 
+  // Telemetry polling — pulls live gate status every 3s
   useEffect(() => {
     const loadGateData = async () => {
       try {
         const gatePromises = [1, 2, 3, 4, 5, 6].map(async (gateId) => {
-          const response = await fetch(readApis[gateId]);
+          const response = await fetch(READ_APIS[gateId]);
           const json = await response.json();
           return { gateId, data: json.data };
         });
         const results = await Promise.all(gatePromises);
-        setGates(prev =>
-          prev.map(gate => {
-            const gateData = results.find(r => r.gateId === gate.id)?.data || {};
+        setGates((prev) =>
+          prev.map((gate) => {
+            const gateData = results.find((r) => r.gateId === gate.id)?.data || {};
             return {
               ...gate,
               position: Number(gateData["40513"]?.value || 0),
               status:
                 gateData["8193"]?.value === 1 ? "RAISING" :
                 gateData["8194"]?.value === 1 ? "LOWERING" : "STOP",
+              // 10003 is a healthy signal, not a trip signal:
+              // 1 = healthy, 0 = trip — so olrTrip is true only when the value is 0
               olrTrip: gateData["10003"]?.value === 0,
-              manualMode: gateData["10001"]?.value === 1,
+              manualMode: gateData["10002"]?.value === 1,
+              fullClose: gateData["10007"]?.value === 1,
+              fullOpen: gateData["10008"]?.value === 1,
             };
           })
         );
@@ -309,6 +342,7 @@ export default function RemoteUserDashboard() {
     return () => clearInterval(timer);
   }, []);
 
+  // Derived values used across the render
   const activeCount  = gates.filter((g) => g.status !== "STOP").length;
   const tripCount    = gates.filter((g) => g.olrTrip).length;
   const stoppedCount = gates.filter((g) => g.status === "STOP").length;
