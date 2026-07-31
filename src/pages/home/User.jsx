@@ -125,9 +125,14 @@ const UserDashboard = ({ onLogout }) => {
   };
 
   const handleLogout = () => {
-    localStorage.clear();
-    window.location.href = '/';
-  };
+  if (chargingStatus === 1) {
+    alert("Charging is in progress.\nPlease stop charging before logging out.");
+    return;
+  }
+
+  localStorage.clear();
+  window.location.href = "/";
+};
 
   useEffect(() => {
     if (userId) {
@@ -208,13 +213,14 @@ const UserDashboard = ({ onLogout }) => {
                   <RotateCcw className={`w-3 h-3 sm:w-4 sm:h-4 inline mr-1 sm:mr-1.5 ${isLoading ? 'animate-spin' : ''}`} />
                   <span className="hidden xs:inline">SYNC</span>
                 </button>
-                <button 
-                  onClick={handleLogout}
-                  className="px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-bold rounded-lg sm:rounded-xl shadow-lg transition-all border border-red-400/50 hover:shadow-red-500/50 text-xs sm:text-sm"
-                >
-                  <LogOut className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1 sm:mr-1.5" />
-                  <span className="hidden xs:inline">EXIT</span>
-                </button>
+                <button
+  onClick={handleLogout}
+  disabled={chargingStatus === 1}
+  className="px-3 py-1.5 sm:px-4 sm:py-2 bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 text-white font-bold rounded-lg sm:rounded-xl shadow-lg transition-all border border-red-400/50 hover:shadow-red-500/50 text-xs sm:text-sm"
+>
+  <LogOut className="w-3 h-3 sm:w-4 sm:h-4 inline mr-1 sm:mr-1.5" />
+  <span className="hidden xs:inline">EXIT</span>
+</button>
               </div>
             </div>
           </div>
