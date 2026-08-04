@@ -8,37 +8,13 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const SECRET_USER_ID = 'Office';
-  const SECRET_PASSWORD = 'Office@100';
-  const ADMIN_ID = 'admin';
-  const ADMIN_PASSWORD = 'admin123';
+ 
 
   const handleLogin = async () => {
     setError('');
     setLoading(true);
 
-    try {
-      if (userId === ADMIN_ID && password === ADMIN_PASSWORD) {
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('userRole', 'admin');
-        localStorage.setItem('currentUserId', ADMIN_ID);
-        setLoading(false);
-        setTimeout(() => {
-          onLoginSuccess('admin', { userId: ADMIN_ID, role: 'admin' });
-        }, 100);
-        return;
-      }
-
-      if (userId === SECRET_USER_ID && password === SECRET_PASSWORD) {
-        localStorage.setItem('isLoggedIn', 'true');
-        localStorage.setItem('userRole', 'user');
-        localStorage.setItem('currentUserId', SECRET_USER_ID);
-        setLoading(false);
-        setTimeout(() => {
-          onLoginSuccess('user', { userId: SECRET_USER_ID, role: 'user' });
-        }, 100);
-        return;
-      }
+   try {
 
       const response = await fetch(`${API_BASE}`, {
         method: 'POST',
@@ -55,18 +31,17 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
 
       const data = await response.json();
 
-      if (response.ok && (data.success || data.userId || data.message === 'Login successful')) {
-        const role = data.role || (userId.toLowerCase() === 'admin' ? 'admin' : 'user');
+      if (response.ok) {
+        const role = data.role;
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('userRole', role);
         localStorage.setItem('currentUserId', userId);
-        localStorage.setItem('userBalance', data.balance || '0');
+        
         
         const userData = {
-          userId: userId,
-          role: role,
-          balance: data.balance
-        };
+  userId: userId,
+  role: role
+};
 
         setLoading(false);
         setTimeout(() => {
@@ -141,7 +116,7 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
               margin: '0 0 14px 0',
               lineHeight: '1.2'
             }}>
-              EV Charging Station
+              BOUNSI Gate Control System
             </h1>
 
             {/* RED LINE */}
@@ -160,7 +135,7 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
               margin: '0 0 50px 0',
               fontWeight: '500'
             }}>
-              Smart Charging Management System
+              Industrial Gate Monitoring & Control System
             </p>
 
             {/* FEATURES ON DESKTOP LEFT */}
@@ -473,7 +448,7 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
               color: '#1a1a1a',
               margin: '0 0 12px 0'
             }}>
-              EV Charging Station
+              EV CHARGING STATION
             </h1>
 
             {/* RED LINE */}
