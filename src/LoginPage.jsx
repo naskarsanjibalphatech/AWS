@@ -116,7 +116,7 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
               margin: '0 0 14px 0',
               lineHeight: '1.2'
             }}>
-              BOUNSI Gate Control System
+              EV CHARGING STATION
             </h1>
 
             {/* RED LINE */}
