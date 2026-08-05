@@ -36,11 +36,15 @@ const LoginPage = ({ onLoginSuccess = () => {} }) => {
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('userRole', role);
         localStorage.setItem('currentUserId', userId);
+        localStorage.setItem("userBalance", data.balance);
+        localStorage.setItem("userName", data.name || "");
         
         
         const userData = {
-  userId: userId,
-  role: role
+    userId: userId,
+    role: role,
+    balance: data.balance,
+    name: data.name
 };
 
         setLoading(false);
