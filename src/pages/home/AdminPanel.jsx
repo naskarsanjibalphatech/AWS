@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { User, DollarSign, Trash2, Edit3, LogOut, Zap, AlertCircle, Plus, CheckCircle, Lock } from 'lucide-react';
+import { User, DollarSign, Trash2, Edit3, LogOut, Zap, AlertCircle, Plus, CheckCircle, Lock, Activity, RefreshCw } from 'lucide-react';
 
 const AdminPanel = ({ onLogout }) => {
   const [users, setUsers] = useState([]);
@@ -18,7 +18,14 @@ const AdminPanel = ({ onLogout }) => {
   const [newUserId, setNewUserId] = useState('');
   const [newPassword, setNewPassword] = useState('');
 
+  // Load Amp tile state
+  const [loadAmp, setLoadAmp] = useState(null);
+  const [loadAmpLoading, setLoadAmpLoading] = useState(false);
+  const [loadAmpError, setLoadAmpError] = useState('');
+  const [loadAmpUpdatedAt, setLoadAmpUpdatedAt] = useState(null);
+
   const USER_API = "https://o27vgpfcrh.execute-api.ap-south-1.amazonaws.com/USER_LOGIN_EV_S1";
+  const LOAD_AMP_API = "https://jruf2pojlk.execute-api.ap-south-1.amazonaws.com/default/";
 
   // ✅ BULLETPROOF Response Parser
   const safeParseResponse = async (response) => {
@@ -33,6 +40,56 @@ const AdminPanel = ({ onLogout }) => {
       }
     } catch (err) {
       return { message: 'Failed to parse response', success: false };
+    }
+  };
+
+  // ✅ Load Amp fetcher — tries common field name variants since the
+  // exact response shape wasn't specified. Adjust the key list below
+  // if your Lambda returns a different field name.
+  const fetchLoadAmp = async () => {
+    try {
+      setLoadAmpLoading(true);
+      setLoadAmpError('');
+
+      const response = await fetch(LOAD_AMP_API, { method: "GET" });
+      const data = await safeParseResponse(response);
+      console.log('⚡ Load Amp response:', data);
+
+      if (response.ok) {
+        const candidateKeys = ['loadAmp', 'load_amp', 'amp', 'amps', 'current', 'value', 'Amp'];
+        let found;
+        // Some Lambdas wrap the payload in a "body" string (classic API Gateway proxy format)
+        let payload = data;
+        if (typeof data.body === 'string') {
+          try { payload = JSON.parse(data.body); } catch (_) { payload = data; }
+        }
+
+        for (const key of candidateKeys) {
+          if (payload && payload[key] !== undefined && payload[key] !== null) {
+            found = payload[key];
+            break;
+          }
+        }
+
+        if (found === undefined && typeof payload === 'number') {
+          found = payload;
+        }
+
+        if (found !== undefined) {
+          setLoadAmp(parseFloat(found));
+          setLoadAmpUpdatedAt(new Date());
+        } else {
+          setLoadAmpError('Unrecognized response format');
+          console.warn('Load Amp: no matching field found in', payload);
+        }
+      } else {
+        setLoadAmpError(data.message || `HTTP ${response.status}`);
+      }
+    } catch (err) {
+      console.error('fetchLoadAmp error:', err);
+      setLoadAmpError('Network error loading load amp');
+    } finally {
+      setLoadAmpLoading(false);
     }
   };
 
@@ -166,6 +223,7 @@ const AdminPanel = ({ onLogout }) => {
 
   useEffect(() => {
     fetchUsers();
+    fetchLoadAmp();
   }, []);
 
   const handleLogout = () => {
@@ -223,6 +281,52 @@ const AdminPanel = ({ onLogout }) => {
             </div>
           </div>
         )}
+
+        {/* Load Amp Tile — dark HMI-style energy card */}
+        <div className="mb-8">
+          <div className="w-full sm:w-80 max-w-full bg-[#0b0f17] rounded-2xl p-5 shadow-2xl border border-white/5 relative overflow-hidden">
+            {/* corner accent */}
+            <div className="absolute top-0 left-0 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-emerald-500 rounded-br-lg rounded-tl-2xl"></div>
+
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-2">
+                <Activity className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <span className="text-red-400 font-bold text-xs sm:text-sm uppercase tracking-widest">
+                  Active Load
+                </span>
+              </div>
+              <button
+                onClick={fetchLoadAmp}
+                disabled={loadAmpLoading}
+                className="p-1.5 hover:bg-white/10 rounded-lg transition-all disabled:opacity-50 -mt-1 -mr-1"
+                title="Refresh load amp"
+              >
+                <RefreshCw className={`w-4 h-4 text-gray-400 ${loadAmpLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            <div className="mt-3">
+              {loadAmpLoading ? (
+                <div className="flex items-center py-1">
+                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                </div>
+              ) : loadAmpError ? (
+                <p className="text-gray-400 text-sm">{loadAmpError}</p>
+              ) : (
+                <p className="font-mono font-bold text-white text-3xl sm:text-4xl tracking-tight">
+                  {loadAmp !== null ? loadAmp.toFixed(2) : '--'}
+                  <span className="text-lg sm:text-xl font-semibold text-gray-300 ml-2">A</span>
+                </p>
+              )}
+            </div>
+
+            <p className="text-gray-500 text-[11px] sm:text-xs uppercase tracking-wide mt-2">
+              {loadAmpUpdatedAt && !loadAmpLoading
+                ? `Last updated ${loadAmpUpdatedAt.toLocaleTimeString()}`
+                : 'Waiting for latest reading'}
+            </p>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* User List */}

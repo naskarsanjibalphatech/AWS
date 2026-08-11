@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Zap, Power, Square, Wifi, WifiOff, RotateCcw, AlertCircle, DollarSign, Activity, LogOut, Battery, Gauge } from 'lucide-react';
+import { Zap, Power, Square, Wifi, WifiOff, RotateCcw, AlertCircle, DollarSign, Activity, LogOut, Battery, Gauge, RefreshCw } from 'lucide-react';
 
 const UserDashboard = ({ onLogout }) => {
   const [userId, setUserId] = useState(localStorage.getItem('currentUserId') || '');
@@ -13,10 +13,67 @@ const UserDashboard = ({ onLogout }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Active load amp state
+  const [loadAmp, setLoadAmp] = useState(null);
+  const [loadAmpLoading, setLoadAmpLoading] = useState(false);
+  const [loadAmpError, setLoadAmpError] = useState('');
+  const [loadAmpUpdatedAt, setLoadAmpUpdatedAt] = useState(null);
+
   const USER_API = "https://o27vgpfcrh.execute-api.ap-south-1.amazonaws.com/USER_LOGIN_EV_S1";
   const READ_EV_API = "https://il2iaq42al.execute-api.ap-south-1.amazonaws.com/READ_EV_TABLE";
   const WRITE_EV_API = "https://ru9qsjirhe.execute-api.ap-south-1.amazonaws.com/WRITE_EVproject";
   const MODBUS_TRIGGER_API = "https://w4fndc7sm6.execute-api.ap-south-1.amazonaws.com/cloud_energyMeter_evPROJECT";
+  const LOAD_AMP_API = "https://jruf2pojlk.execute-api.ap-south-1.amazonaws.com/default/";
+
+  // ✅ Fetch latest active load amp value. Tries common field name
+  // variants and unwraps API Gateway's proxy "{ body: '...' }" shape.
+  const fetchLoadAmp = useCallback(async () => {
+    try {
+      setLoadAmpLoading(true);
+      setLoadAmpError('');
+
+      const response = await fetch(LOAD_AMP_API, { method: "GET" });
+      const contentType = response.headers.get('content-type');
+      const rawText = await response.text();
+      const data = contentType && contentType.includes('application/json')
+        ? JSON.parse(rawText)
+        : { message: rawText };
+
+      if (response.ok) {
+        const candidateKeys = ['loadAmp', 'load_amp', 'amp', 'amps', 'current', 'value', 'Amp'];
+        let payload = data;
+        if (typeof data.body === 'string') {
+          try { payload = JSON.parse(data.body); } catch (_) { payload = data; }
+        }
+
+        let found;
+        for (const key of candidateKeys) {
+          if (payload && payload[key] !== undefined && payload[key] !== null) {
+            found = payload[key];
+            break;
+          }
+        }
+        if (found === undefined && typeof payload === 'number') {
+          found = payload;
+        }
+
+        if (found !== undefined) {
+          setLoadAmp(parseFloat(found));
+          setLoadAmpUpdatedAt(new Date());
+        } else {
+          setLoadAmpError('Unrecognized response format');
+          console.warn('Load Amp: no matching field found in', payload);
+        }
+      } else {
+        setLoadAmpError(data.message || `HTTP ${response.status}`);
+      }
+    } catch (err) {
+      console.error('fetchLoadAmp error:', err);
+      setLoadAmpError('Network error');
+    } finally {
+      setLoadAmpLoading(false);
+    }
+  }, []);
 
   const fetchUserBalance = useCallback(async () => {
     try {
@@ -93,6 +150,7 @@ const UserDashboard = ({ onLogout }) => {
       );
 
       fetchLiveStatus();
+      fetchLoadAmp();
     } catch (err) {
       setError('Start failed');
     } finally {
@@ -117,6 +175,7 @@ const UserDashboard = ({ onLogout }) => {
       );
 
       fetchLiveStatus();
+      fetchLoadAmp();
     } catch (err) {
       setError('Stop failed');
     } finally {
@@ -139,8 +198,12 @@ const UserDashboard = ({ onLogout }) => {
       writeUserDataToPLC();
       fetchLiveStatus();
     }
+    fetchLoadAmp();
 
-    const interval = setInterval(fetchLiveStatus, 10000);
+    const interval = setInterval(() => {
+      fetchLiveStatus();
+      fetchLoadAmp();
+    }, 10000);
     return () => clearInterval(interval);
   }, [userId]);
 
@@ -234,6 +297,50 @@ const UserDashboard = ({ onLogout }) => {
               <span className="text-xs sm:text-sm font-bold text-red-100 leading-relaxed flex-1 relative z-10">{error}</span>
             </div>
           )}
+
+          {/* Active Load Amp Tile — dark HMI-style energy card */}
+          <div className="w-full sm:w-80 max-w-full bg-[#0b0f17] rounded-2xl p-5 shadow-2xl border border-white/5 relative overflow-hidden">
+            {/* corner accent */}
+            <div className="absolute top-0 left-0 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-emerald-500 rounded-br-lg rounded-tl-2xl"></div>
+
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-2">
+                <Activity className="w-4 h-4 text-red-400 flex-shrink-0" />
+                <span className="text-red-400 font-bold text-xs sm:text-sm uppercase tracking-widest">
+                  Active Load
+                </span>
+              </div>
+              <button
+                onClick={fetchLoadAmp}
+                disabled={loadAmpLoading}
+                className="p-1.5 hover:bg-white/10 rounded-lg transition-all disabled:opacity-50 -mt-1 -mr-1"
+                title="Refresh load amp"
+              >
+                <RefreshCw className={`w-4 h-4 text-gray-400 ${loadAmpLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            <div className="mt-3">
+              {loadAmpLoading && loadAmp === null ? (
+                <div className="flex items-center py-1">
+                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                </div>
+              ) : loadAmpError ? (
+                <p className="text-gray-400 text-sm">{loadAmpError}</p>
+              ) : (
+                <p className="font-mono font-bold text-white text-3xl sm:text-4xl tracking-tight">
+                  {loadAmp !== null ? loadAmp.toFixed(2) : '--'}
+                  <span className="text-lg sm:text-xl font-semibold text-gray-300 ml-2">A</span>
+                </p>
+              )}
+            </div>
+
+            <p className="text-gray-500 text-[11px] sm:text-xs uppercase tracking-wide mt-2">
+              {loadAmpUpdatedAt
+                ? `Last updated ${loadAmpUpdatedAt.toLocaleTimeString()}`
+                : 'Waiting for latest reading'}
+            </p>
+          </div>
 
           {/* Main Charging Status - Hero Section */}
           <div className="relative bg-white border border-black rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 shadow-md">
