@@ -2,9 +2,9 @@ import React from "react";
 import { isGateOnline } from "./gateConnectivity";
 
 const GROUPS = [
-  { name: "Group 1", description: "Spillway gates 01–02", ids: [1, 2] },
-  { name: "Group 2", description: "Spillway gates 03–04", ids: [3, 4] },
-  { name: "Group 3", description: "Canal regulator gates 05–06", ids: [5, 6] },
+  { name: "Spillway Gates", description: "Gate 01–02", ids: [1, 2] },
+  { name: "Spillway Gates", description: "Gate 03–04", ids: [3, 4] },
+  { name: "Outlet Gates", description: "Gate 05–06", ids: [5, 6] },
 ];
 
 /** Shared read-only overview. Uses the existing dashboards' polled PLC data. */

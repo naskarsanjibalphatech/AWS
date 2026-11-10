@@ -35,9 +35,9 @@ const initialGates = Array.from({ length: GATE_COUNT }, (_, i) => ({
 }));
 
 const GROUPS = [
-  { id: "G1", label: "Group 1", sub: "Spillway gates 01–02", ids: [1, 2] },
-  { id: "G2", label: "Group 2", sub: "Spillway gates 03–04", ids: [3, 4] },
-  { id: "G3", label: "Group 3", sub: "Canal regulator gates 05–06", ids: [5, 6] },
+  { id: "G1", label: "Spillway Gates", sub: "Gate 01–02", ids: [1, 2] },
+  { id: "G2", label: "Spillway Gates", sub: "Gate 03–04", ids: [3, 4] },
+  { id: "G3", label: "Outlet Gates", sub: "Gate 05–06", ids: [5, 6] },
 ];
 
 // Telemetry read endpoints, polled every 3s for live gate status
@@ -243,12 +243,12 @@ function GateVisualization({ gate }) {
       </circle>
 
       {/* Gate ID tag */}
-      <text x={leftPier - 3} y={deckY + 13} textAnchor="end" fontSize="9" fill="#7a8a9a" fontFamily="monospace">
+      <text x={leftPier - 3} y={deckY + 13} textAnchor="end" fontSize="12" fontWeight="700" fill="#cbd5e1" fontFamily="monospace">
         G{String(gate.id).padStart(2, "0")}
       </text>
 
       {/* Open % label on right side */}
-      <text x={rightPier + pierW + 6} y={clampedGateTop + 4} fontSize="9" fill="#ffe04d" fontFamily="monospace" opacity="0.85">
+      <text x={rightPier + pierW + 6} y={clampedGateTop + 4} fontSize="14" fontWeight="800" fill="#ffe04d" fontFamily="monospace" opacity="1">
         {(openPct * 100).toFixed(0)}%
       </text>
 
@@ -259,16 +259,16 @@ function GateVisualization({ gate }) {
             <animate attributeName="opacity" values="0.06;0.18;0.06" dur="0.9s" repeatCount="indefinite" />
           </rect>
           <rect x={cx - 48} y={H / 2 - 12} width="96" height="24" fill="#3a0e0e" stroke="#f87171" strokeWidth="1" rx="3" />
-          <text x={cx} y={H / 2 + 5} textAnchor="middle" fontSize="12" fill="#f87171" fontFamily="monospace" fontWeight="700" letterSpacing="1">
+          <text x={cx} y={H / 2 + 5} textAnchor="middle" fontSize="15" fill="#f87171" fontFamily="monospace" fontWeight="700" letterSpacing="1">
             OLR TRIP
           </text>
         </>
       )}
 
       {/* Position scale on left side */}
-      <text x={leftPier - 3} y={deckY + MAX_H * 0.1 + 10} textAnchor="end" fontSize="8" fill="#4a5a6a" fontFamily="monospace">10m</text>
-      <text x={leftPier - 3} y={deckY + MAX_H * 0.6 + 10} textAnchor="end" fontSize="8" fill="#4a5a6a" fontFamily="monospace">5m</text>
-      <text x={leftPier - 3} y={sillY - 4} textAnchor="end" fontSize="8" fill="#4a5a6a" fontFamily="monospace">0m</text>
+      <text x={leftPier - 3} y={deckY + MAX_H * 0.1 + 10} textAnchor="end" fontSize="11" fontWeight="700" fill="#cbd5e1" fontFamily="monospace">10m</text>
+      <text x={leftPier - 3} y={deckY + MAX_H * 0.6 + 10} textAnchor="end" fontSize="11" fontWeight="700" fill="#cbd5e1" fontFamily="monospace">5m</text>
+      <text x={leftPier - 3} y={sillY - 4} textAnchor="end" fontSize="11" fontWeight="700" fill="#cbd5e1" fontFamily="monospace">0m</text>
     </svg>
   );
 }
@@ -634,6 +634,30 @@ export default function OperatorDashboard() {
         }
 
         @media (max-width:520px) { .db-brand-sub { display:none; } }
+        /* Readability improvements for Monitor / Monitor & Control */
+        .db-card-id { font-size: 17px; font-weight: 800; }
+        .db-card-id .num { font-size: 14px; font-weight: 700; }
+        .db-chip { font-size: 13px; font-weight: 800; padding: 5px 10px; letter-spacing: .3px; }
+        .db-status-bar { padding: 13px 16px; gap: 10px; }
+        .db-status-label { font-size: 13px; font-weight: 700; letter-spacing: .3px; }
+        .db-status-value { font-size: 18px; font-weight: 800; }
+        .db-status-dot { width: 11px; height: 11px; }
+        .db-lcd .ll { font-size: 13px; font-weight: 700; letter-spacing: .4px; }
+        .db-lcd .lv { font-size: 25px; font-weight: 800; }
+        .db-lcd .lv small { font-size: 15px; font-weight: 700; }
+        .db-flags { gap: 10px; }
+        .db-flag { font-size: 15px; font-weight: 600; gap: 8px; }
+        .db-fval { font-size: 14px; font-weight: 800; letter-spacing: .2px; }
+        .db-dot { width: 9px; height: 9px; }
+        .db-group-title { font-size: 17px; font-weight: 800; }
+        .db-group-sub { font-size: 13px; font-weight: 600; }
+        @media (max-width: 640px) {
+          .db-status-label { font-size: 12px; }
+          .db-status-value { font-size: 16px; }
+          .db-flag { font-size: 14px; }
+          .db-fval { font-size: 13px; }
+          .db-chip { font-size: 12px; }
+        }
       `}</style>
 
       {/* TOP BAR */}
@@ -707,7 +731,7 @@ export default function OperatorDashboard() {
 
       {/* SECTION HEAD */}
       <div className="db-sec">
-        <h2><Activity size={15} /> Gate status monitoring <span className="sub">— spillway &amp; canal regulators</span></h2>
+        <h2><Activity size={15} /> Gate status monitoring <span className="sub">— spillway &amp; outlet gates</span></h2>
         <span className="meta">{activeCount} active · {tripCount} trips · {timeStr}</span>
       </div>
 
@@ -767,8 +791,8 @@ export default function OperatorDashboard() {
                       </div>
                       <div style={{ textAlign: "right" }}>
                         <div className="db-status-label">Open position</div>
-                        <div style={{ fontFamily: "var(--mono)", fontSize: 18, fontWeight: 700, color: "var(--green)", marginTop: 2 }}>
-                          {Math.round(gate.position)} <span style={{ fontSize: 11, color: "var(--dim)", fontWeight: 500 }}>/ 1000</span>
+                        <div style={{ fontFamily: "var(--mono)", fontSize: 25, fontWeight: 800, color: "var(--green)", marginTop: 2 }}>
+                          {Math.round(gate.position)} <span style={{ fontSize: 15, color: "var(--dim)", fontWeight: 700 }}>/ 1000</span>
                         </div>
                       </div>
                     </div>
