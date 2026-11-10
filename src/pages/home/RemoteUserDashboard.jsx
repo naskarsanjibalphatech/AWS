@@ -1,3 +1,5 @@
+import GateOverview from "./GateOverview";
+import { fetchGateReadings, isGateOnline } from "./gateConnectivity";
 import React, { useState, useEffect } from "react";
 import { Activity, LogOut, CheckCircle2, Building2, AlertTriangle, Waves } from "lucide-react";
 
@@ -5,17 +7,18 @@ import { Activity, LogOut, CheckCircle2, Building2, AlertTriangle, Waves } from 
    CONSTANTS
    ────────────────────────────────────────────────────────────── */
 
-const MAX_POS = 15.3;
+const MAX_POS = 1000;
 const GATE_COUNT = 6;
 
 const initialGates = Array.from({ length: GATE_COUNT }, (_, i) => ({
   id: i + 1,
-  position: [6.2, 4.8, 3.1, 0, 7.5, 2.0][i],
-  status: ["RAISING", "STOP", "LOWERING", "STOP", "STOP", "RAISING"][i],
-  manualMode: i === 1,
-  olrTrip: i === 3,
-  fullClose: i === 3,
+  position: 0,
+  status: "STOP",
+  manualMode: false,
+  olrTrip: false,
+  fullClose: false,
   fullOpen: false,
+  lastUpdate: null,
 }));
 
 const GROUPS = [
@@ -47,10 +50,12 @@ function GateVisualization({ gate }) {
   const deckY = 18;
   const sillY = H - 18;
 
-  const openPct = gate.position / MAX_POS;
-  const gateTopY = deckY + 10 + (1 - openPct) * MAX_H;
-  const clampedGateTop = Math.min(gateTopY, sillY - 4);
-  const gateH = Math.max(4, sillY - clampedGateTop);
+  const openPct = Math.min(1, Math.max(0, (Number(gate.position) || 0) / MAX_POS));
+  // Fixed-height gate leaf moves UP as PLC position increases (0 closed, 1000 open).
+  // The visible clearance beneath the leaf is proportional to opening percentage.
+  const gateH = 75;
+  const clampedGateTop = sillY - gateH - openPct * 105;
+  const clearance = openPct * 105;
 
   const leftPier = cx - gateW / 2 - pierW;
   const rightPier = cx + gateW / 2;
@@ -59,14 +64,10 @@ function GateVisualization({ gate }) {
   const raising = gate.status === "RAISING";
   const lowering = gate.status === "LOWERING";
 
-  const hoistStyle = raising
-    ? { animation: "hoist-up 1s ease-in-out infinite" }
-    : lowering
-    ? { animation: "hoist-down 1s ease-in-out infinite" }
-    : {};
+  const hoistStyle = { transform: `translateY(${-clearance}px)`, transition: "transform 0.7s ease-in-out" };
 
   const ribCount = 5;
-  const ribs = Array.from({ length: ribCount }, (_, i) => clampedGateTop + (gateH / (ribCount + 1)) * (i + 1));
+  const ribs = Array.from({ length: ribCount }, (_, i) => (sillY - gateH) + (gateH / (ribCount + 1)) * (i + 1));
 
   const upstreamY = deckY + 38;
   const downstreamY = sillY - 8 - openPct * 38;
@@ -119,22 +120,35 @@ function GateVisualization({ gate }) {
       {/* Water inside slot */}
       <rect
         x={cx - gateW / 2}
-        y={Math.max(downstreamY, deckY)}
+        y={sillY - clearance}
         width={gateW}
-        height={Math.max(0, sillY - Math.max(downstreamY, deckY))}
+        height={clearance}
         fill={`url(#water-${gate.id})`}
         opacity="0.55"
       />
 
+      {/* Animated water-flow indication under an open gate; not a measured discharge. */}
+      {openPct > 0 && (
+        <g opacity={0.25 + openPct * 0.65}>
+          <rect x={leftPier + pierW} y={sillY - Math.min(clearance, 24)} width={gateW} height={Math.min(clearance, 24)} fill="#2d9cce" opacity="0.55" />
+          <path d={`M ${leftPier + pierW} ${sillY - Math.min(clearance, 14)} q 14 -5 28 0 t 28 0 t 28 0 t 28 0`} fill="none" stroke="#9be7ff" strokeWidth={1 + openPct * 2}>
+            <animate attributeName="stroke-dashoffset" from="80" to="0" dur={`${2 - openPct}s`} repeatCount="indefinite" />
+          </path>
+          <path d={`M ${leftPier + pierW} ${sillY - 6} H ${rightPier}`} fill="none" stroke="#9be7ff" strokeDasharray="12 10" strokeWidth={1 + openPct * 2}>
+            <animate attributeName="stroke-dashoffset" from="44" to="0" dur={`${2 - openPct}s`} repeatCount="indefinite" />
+          </path>
+        </g>
+      )}
+
       {/* Gate leaf */}
       <g style={hoistStyle}>
-        <rect x={cx - gateW / 2 + 2} y={clampedGateTop} width={gateW - 4} height={gateH} fill="#b5532f" stroke="#7a3a1f" strokeWidth="1.5" rx="1" />
-        <rect x={cx - gateW / 2 + 2} y={clampedGateTop} width={(gateW - 4) / 2} height={gateH} fill="#c9663f" opacity="0.5" />
+        <rect x={cx - gateW / 2 + 2} y={sillY - gateH} width={gateW - 4} height={gateH} fill="#b5532f" stroke="#7a3a1f" strokeWidth="1.5" rx="1" />
+        <rect x={cx - gateW / 2 + 2} y={sillY - gateH} width={(gateW - 4) / 2} height={gateH} fill="#c9663f" opacity="0.5" />
         {ribs.map((y, i) => (
           <rect key={i} x={cx - gateW / 2 + 2} y={y - 2} width={gateW - 4} height="4" fill="#7a3a1f" />
         ))}
-        <rect x={cx - gateW / 2} y={clampedGateTop - 2} width={gateW} height="6" fill="#d97a4f" stroke="#7a3a1f" strokeWidth="1" rx="1" />
-        <rect x={cx - gateW / 2 + 2} y={clampedGateTop + gateH - 4} width={gateW - 4} height="5" fill="#8a4426" />
+        <rect x={cx - gateW / 2} y={sillY - gateH - 2} width={gateW} height="6" fill="#d97a4f" stroke="#7a3a1f" strokeWidth="1" rx="1" />
+        <rect x={cx - gateW / 2 + 2} y={sillY - 4} width={gateW - 4} height="5" fill="#8a4426" />
         {[0.2, 0.5, 0.8].map((fx, i) =>
           ribs.map((ry, j) => (
             <circle key={`${i}-${j}`} cx={cx - gateW / 2 + 2 + (gateW - 4) * fx} cy={ry} r="1.5" fill="#5a2a14" />
@@ -192,7 +206,7 @@ function GateVisualization({ gate }) {
    GATE CARD — view-only (no control buttons)
    ────────────────────────────────────────────────────────────── */
 
-function GateCard({ gate }) {
+function GateCard({ gate, now }) {
   const running  = gate.status !== "STOP";
   const raising  = gate.status === "RAISING";
   const lowering = gate.status === "LOWERING";
@@ -207,7 +221,7 @@ function GateCard({ gate }) {
         <div className="db-card-id">
           Gate <span className="num">#{String(gate.id).padStart(2, "0")}</span>
         </div>
-        <span className={`db-chip ${gate.status}`}>{gate.status}</span>
+        <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}><span className={`db-chip ${gate.status}`}>{gate.status}</span><span title={gate.lastUpdate ? `Last update: ${new Date(gate.lastUpdate).toLocaleString("en-IN")}` : "No telemetry timestamp"} style={{ fontSize:11, fontWeight:700, color:isGateOnline(gate.lastUpdate, now.getTime()) ? "#34d399" : "#f87171" }}>● {isGateOnline(gate.lastUpdate, now.getTime()) ? "ONLINE" : "OFFLINE"}</span></div>
       </div>
 
       {/* Prominent status bar */}
@@ -224,7 +238,7 @@ function GateCard({ gate }) {
         <div style={{ textAlign: "right" }}>
           <div className="db-status-label">Open position</div>
           <div style={{ fontFamily: "var(--mono)", fontSize: 18, fontWeight: 700, color: "var(--green)", marginTop: 2 }}>
-            {gate.position.toFixed(2)} <span style={{ fontSize: 11, color: "var(--dim)", fontWeight: 500 }}>m</span>
+            {Math.round(gate.position)} <span style={{ fontSize: 11, color: "var(--dim)", fontWeight: 500 }}>/ 1000</span>
           </div>
         </div>
       </div>
@@ -238,7 +252,7 @@ function GateCard({ gate }) {
       <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--bdr)" }}>
         <div className="db-lcd">
           <div className="ll">Open Position</div>
-          <div className="lv">{gate.position.toFixed(2)} <small>m</small></div>
+          <div className="lv">{Math.round(gate.position)} <small>/ 1000</small></div>
         </div>
       </div>
 
@@ -298,6 +312,8 @@ function GateCard({ gate }) {
 export default function RemoteUserDashboard() {
   const [gates, setGates] = useState(initialGates);
   const [now, setNow] = useState(new Date());
+  const [activeTab, setActiveTab] = useState("overview");
+  const [selectedGate, setSelectedGate] = useState(null);
 
   // Clock tick — updates the header time/date display every second
   useEffect(() => {
@@ -305,42 +321,46 @@ export default function RemoteUserDashboard() {
     return () => clearInterval(tick);
   }, []);
 
-  // Telemetry polling — pulls live gate status every 3s
+  // Independently poll six gates; compare actual backend timestamps, not HTTP success.
   useEffect(() => {
+    let active = true;
+    let busy = false;
     const loadGateData = async () => {
+      if (busy) return;
+      busy = true;
       try {
-        const gatePromises = [1, 2, 3, 4, 5, 6].map(async (gateId) => {
-          const response = await fetch(READ_APIS[gateId]);
-          const json = await response.json();
-          return { gateId, data: json.data };
-        });
-        const results = await Promise.all(gatePromises);
-        setGates((prev) =>
-          prev.map((gate) => {
-            const gateData = results.find((r) => r.gateId === gate.id)?.data || {};
-            return {
-              ...gate,
-              position: Number(gateData["40513"]?.value || 0),
-              status:
-                gateData["8193"]?.value === 1 ? "RAISING" :
-                gateData["8194"]?.value === 1 ? "LOWERING" : "STOP",
-              // 10003 is a healthy signal, not a trip signal:
-              // 1 = healthy, 0 = trip — so olrTrip is true only when the value is 0
-              olrTrip: gateData["10003"]?.value === 0,
-              manualMode: gateData["10002"]?.value === 1,
-              fullClose: gateData["10007"]?.value === 1,
-              fullOpen: gateData["10008"]?.value === 1,
-            };
-          })
-        );
-      } catch (err) {
-        console.error(err);
-      }
+        const results = await fetchGateReadings();
+        if (!active) return;
+        setGates((prev) => prev.map((gate) => {
+          const result = results[gate.id - 1];
+          if (!result || result.error) return gate; // preserve last known readings
+          const gateData = result.data;
+          return {
+            ...gate,
+            lastUpdate: result.lastUpdate,
+            position: Math.min(MAX_POS, Math.max(0, Number(gateData["40513"]?.value ?? gate.position) || 0)),
+            status: gateData["8193"]?.value === 1 ? "RAISING" : gateData["8194"]?.value === 1 ? "LOWERING" : "STOP",
+            manualMode: gateData["10002"]?.value === 1,
+            olrTrip: gateData["10003"]?.value === 0,
+            fullClose: gateData["10007"]?.value === 1,
+            fullOpen: gateData["10008"]?.value === 1,
+          };
+        }));
+      } finally { busy = false; }
     };
     loadGateData();
     const timer = setInterval(loadGateData, 3000);
-    return () => clearInterval(timer);
+    return () => { active = false; clearInterval(timer); };
   }, []);
+
+  // Navigate from Overview to the original gate card without changing control logic.
+  useEffect(() => {
+    if (activeTab !== "details" || selectedGate == null) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(`scada-gate-${selectedGate}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeTab, selectedGate]);
 
   // Derived values used across the render
   const activeCount  = gates.filter((g) => g.status !== "STOP").length;
@@ -595,6 +615,14 @@ export default function RemoteUserDashboard() {
         </div>
       </header>
 
+      <nav aria-label="Dashboard tabs" style={{ display:"flex", gap:8, padding:"10px 16px", borderBottom:"1px solid #243347", background:"#0c121b" }}>
+        <button type="button" onClick={() => setActiveTab("overview")} style={{ padding:"9px 14px", borderRadius:8, cursor:"pointer", background:activeTab === "overview" ? "#14334b" : "#101a26", border:`1px solid ${activeTab === "overview" ? "#38b6ff" : "#243347"}`, color:"#dde6f0", fontWeight:700 }}>Overview</button>
+        <button type="button" onClick={() => setActiveTab("details")} style={{ padding:"9px 14px", borderRadius:8, cursor:"pointer", background:activeTab === "details" ? "#14334b" : "#101a26", border:`1px solid ${activeTab === "details" ? "#38b6ff" : "#243347"}`, color:"#dde6f0", fontWeight:700 }}>Monitor</button>
+      </nav>
+      {activeTab === "overview" ? (
+        <GateOverview gates={gates} now={now} onSelectGate={(id) => { setSelectedGate(id); setActiveTab("details"); }} />
+      ) : (
+      <>
       {/* BANNER */}
       {tripCount > 0 ? (
         <div className="db-banner warn">
@@ -666,12 +694,17 @@ export default function RemoteUserDashboard() {
             </div>
             <div className="db-gate-grid">
               {groupGates.map((gate) => (
-                <GateCard gate={gate} key={gate.id} />
+                <div key={gate.id} id={`scada-gate-${gate.id}`} style={{ minWidth:0, outline:selectedGate === gate.id ? "2px solid #38b6ff" : undefined, outlineOffset:2, borderRadius:10 }}>
+                  <GateCard gate={gate} now={now} />
+                </div>
               ))}
             </div>
           </div>
         );
       })}
+
+      </>
+      )}
 
       {/* FOOTER */}
       <footer className="db-footer">

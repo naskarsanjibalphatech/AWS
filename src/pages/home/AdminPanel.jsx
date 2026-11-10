@@ -1,3 +1,5 @@
+import GateOverview from "./GateOverview";
+import { fetchGateReadings, isGateOnline } from "./gateConnectivity";
 import React, { useState, useEffect, useMemo } from 'react';
 import {
   User, LogOut, Zap, AlertCircle, Plus, CheckCircle,
@@ -42,7 +44,8 @@ const GATE_ROW_DEFS = [
 ];
 
 const HEADINGS = {
-  overview: { title: 'Overview',        sub: 'Live snapshot of users and gate status'           },
+  overview: { title: 'Gate Overview', sub: 'Live status of all six gates' },
+  dashboard: { title: 'Admin Dashboard', sub: 'Live snapshot of users and gate status' },
   users:    { title: 'User management', sub: 'View, create, delete, and reset access for users' },
   gates:    { title: 'Gate status',     sub: 'Real-time monitoring of all canal gates'          },
 };
@@ -263,7 +266,7 @@ function AdminActionsCard({
   );
 }
 
-function GateStatusCard({ gates, activeGates, tripCount, s }) {
+function GateStatusCard({ gates, activeGates, tripCount, s, now, selectedGate }) {
   return (
     <div style={s.card}>
       <div style={s.cardHeader}>
@@ -277,9 +280,9 @@ function GateStatusCard({ gates, activeGates, tripCount, s }) {
         {gates.map(gate => {
           const hasTrip = String(gate.olr).toUpperCase() === 'ON';
           return (
-            <div key={gate.gate} style={{ background:P.inset, border:`1px solid ${hasTrip?P.red+'55':P.borderSoft}`, borderRadius:12, padding:'14px 16px', transition:'border-color 0.2s ease' }}>
+            <div key={gate.gate} id={`scada-gate-${gate.gate}`} style={{ outline:selectedGate === gate.gate ? `2px solid ${P.cyan}` : undefined, outlineOffset:2, background:P.inset, border:`1px solid ${hasTrip?P.red+'55':P.borderSoft}`, borderRadius:12, padding:'14px 16px', transition:'border-color 0.2s ease' }}>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:10, paddingBottom:8, borderBottom:`1px solid ${P.borderSoft}` }}>
-                <h3 style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:14, fontWeight:700, color:P.text, margin:0 }}>Gate {String(gate.gate).padStart(2,'0')}</h3>
+                <h3 style={{ fontFamily:"'Space Grotesk',sans-serif", fontSize:14, fontWeight:700, color:P.text, margin:0 }}>Gate {String(gate.gate).padStart(2,'0')}</h3><span title={gate.lastUpdate ? `Last update: ${new Date(gate.lastUpdate).toLocaleString("en-IN")}` : "No telemetry timestamp"} style={{ fontSize:11, fontWeight:700, color:isGateOnline(gate.lastUpdate, now) ? P.green : P.red }}>{isGateOnline(gate.lastUpdate, now) ? "● ONLINE" : "● OFFLINE"}</span>
                 <div style={{ width:9, height:9, borderRadius:'50%', background:hasTrip?P.red:P.green, boxShadow:`0 0 8px 1px ${hasTrip?P.red:P.green}99` }} />
               </div>
               {GATE_ROW_DEFS.map(({ key, label }) => {
@@ -303,11 +306,11 @@ function GateStatusCard({ gates, activeGates, tripCount, s }) {
   );
 }
 
-function StatStrip({ users, gates, activeGates, tripCount, s }) {
+function StatStrip({ users, gates, activeGates, tripCount, s, now }) {
   return (
     <div style={s.statStrip}>
       <div style={s.statCard}><p style={s.statLabel}>Total users</p><p style={{ ...s.statValue, color:P.text }}>{users.length}</p></div>
-      <div style={s.statCard}><p style={s.statLabel}>Gates online</p><p style={{ ...s.statValue, color:P.text }}>{gates.length}</p></div>
+      <div style={s.statCard}><p style={s.statLabel}>Gates online</p><p style={{ ...s.statValue, color:P.text }}>{gates.filter(g => isGateOnline(g.lastUpdate, now)).length}</p></div>
       <div style={s.statCard}><p style={s.statLabel}>Gates active</p><p style={{ ...s.statValue, color:P.cyan }}>{activeGates}</p></div>
       <div style={s.statCard}><p style={s.statLabel}>OLR trips</p><p style={{ ...s.statValue, color:tripCount>0?P.red:P.green }}>{tripCount}</p></div>
     </div>
@@ -330,6 +333,8 @@ const AdminPanel = ({ onLogout }) => {
   const [newPassword, setNewPassword] = useState('');
   const [gates,       setGates]       = useState([]);
   const [view,        setView]        = useState('overview');
+  const [selectedGate, setSelectedGate] = useState(null);
+  const [now, setNow] = useState(Date.now());
 
   const adminId       = 'admin';
   const adminPassword = 'admin123';
@@ -375,9 +380,53 @@ const AdminPanel = ({ onLogout }) => {
 
   useEffect(() => {
     fetchUsers();
-    setGates(Array.from({ length:6 }, (_,i) => ({ gate:i+1, manualMode:'OFF', olr:'OFF', raising:'STOPPED', closing:'STOPPED', fullClose:'OFF' })));
+    setGates(Array.from({ length:6 }, (_,i) => ({ gate:i+1, position:0, manualMode:'OFF', olr:'OFF', raising:'STOPPED', closing:'STOPPED', fullClose:'OFF', lastUpdate:null })));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const clock = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(clock);
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    let busy = false;
+    const poll = async () => {
+      if (busy) return;
+      busy = true;
+      try {
+        const results = await fetchGateReadings();
+        if (!active) return;
+        setGates(prev => prev.map(gate => {
+          const result = results[gate.gate - 1];
+          if (!result || result.error) return gate;
+          const d = result.data;
+          return {
+            ...gate,
+            lastUpdate: result.lastUpdate,
+            position: Math.min(1000, Math.max(0, Number(d["40513"]?.value ?? gate.position) || 0)),
+            manualMode: d['10002']?.value === 1 ? 'ON' : 'OFF',
+            olr: d['10003']?.value === 0 ? 'ON' : 'OFF',
+            raising: d['8193']?.value === 1 ? 'RAISING' : 'STOPPED',
+            closing: d['8194']?.value === 1 ? 'CLOSING' : 'STOPPED',
+            fullClose: d['10007']?.value === 1 ? 'ON' : 'OFF',
+          };
+        }));
+      } finally { busy = false; }
+    };
+    poll();
+    const timer = setInterval(poll, 3000);
+    return () => { active = false; clearInterval(timer); };
+  }, []);
+
+  useEffect(() => {
+    if (view !== "dashboard" || selectedGate == null) return;
+    const frame = requestAnimationFrame(() => {
+      document.getElementById(`scada-gate-${selectedGate}`)?.scrollIntoView({ behavior:"smooth", block:"center" });
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [view, selectedGate]);
 
   const navItem = (v, Icon, label) => (
     <div onClick={() => setView(v)} style={{ display:'flex', alignItems:'center', gap:11, padding:'11px 14px', borderRadius:9, border:`1px solid ${view===v?P.cyan+'40':'transparent'}`, background:view===v?P.cyanDim:'transparent', color:view===v?P.cyan:P.textMuted, fontSize:13, fontWeight:600, cursor:'pointer', transition:'all 0.18s ease', whiteSpace:'nowrap', flexShrink:0 }}>
@@ -397,6 +446,7 @@ const AdminPanel = ({ onLogout }) => {
         </div>
 
         {navItem('overview', LayoutDashboard, 'Overview')}
+        {navItem('dashboard', Gauge, 'Admin Dashboard')}
         {navItem('users',    UsersIcon,       'Users')}
         {navItem('gates',    Activity,        'Gate status')}
 
@@ -422,8 +472,12 @@ const AdminPanel = ({ onLogout }) => {
         <MessagesBlock error={error} success={success} />
 
         {view === 'overview' && (
+          <GateOverview gates={gates} now={now} onSelectGate={(id) => { setSelectedGate(id); setView('dashboard'); }} />
+        )}
+
+        {view === 'dashboard' && (
           <>
-            <StatStrip users={users} gates={gates} activeGates={activeGates} tripCount={tripCount} s={s} />
+            <StatStrip users={users} gates={gates} activeGates={activeGates} tripCount={tripCount} s={s} now={now} />
             <div style={s.grid}>
               <UsersCard users={users} loading={loading} s={s} />
               <AdminActionsCard
@@ -436,7 +490,7 @@ const AdminPanel = ({ onLogout }) => {
                 onCreateUser={handleCreateUser} onDeleteUser={handleDeleteUser} onResetPassword={handleResetPassword}
               />
             </div>
-            <GateStatusCard gates={gates} activeGates={activeGates} tripCount={tripCount} s={s} />
+            <GateStatusCard gates={gates} activeGates={activeGates} tripCount={tripCount} s={s} now={now} selectedGate={selectedGate} />
           </>
         )}
 
@@ -455,7 +509,7 @@ const AdminPanel = ({ onLogout }) => {
           </div>
         )}
 
-        {view === 'gates' && <GateStatusCard gates={gates} activeGates={activeGates} tripCount={tripCount} s={s} />}
+        {view === 'gates' && <GateStatusCard gates={gates} activeGates={activeGates} tripCount={tripCount} s={s} now={now} selectedGate={selectedGate} />}
       </main>
 
       <style>{`
